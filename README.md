@@ -6,6 +6,20 @@ PDC is an experimental project that aims to transform PNG images into 3D geometr
 
 The current implementation focuses on correctness, simplicity, and understanding the PNG format rather than performance or feature completeness.
 
+## Usage
+
+Run;
+
+```sh
+git clone https://github.com/mertishere/pdc
+
+cd pdc
+
+make
+```
+
+To use PDC, simply modify the "char *path" within the main.c to any .png file of your choice. Recommended is to put the .png files for testing within a tests/ folder.
+
 ## Features
 
 Current capabilities:
