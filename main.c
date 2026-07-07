@@ -7,6 +7,7 @@
 #include "huffman.h"
 #include "filter.h"
 #include "utils.h"
+#include "constants.h"
 
 
 void write_ppm(const char *filename, Pixel *pixels, int width, int height) {
@@ -22,17 +23,32 @@ void write_ppm(const char *filename, Pixel *pixels, int width, int height) {
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
             Pixel *p = &pixels[y * width + x];
-            fputc(p->rgb.r, file);
-            fputc(p->rgb.g, file);
-            fputc(p->rgb.b, file);
+
+            float brightness = R_FLOAT_COEFFICIENTS * (float)p->rgb.r;
+            brightness += G_FLOAT_COEFFICIENTS * (float)p->rgb.g;
+            brightness += B_FLOAT_COEFFICIENTS * (float)p->rgb.b;
+            if(brightness > 100.0) {
+                fputc(RGB_WHITE, file);
+                fputc(RGB_WHITE, file);
+                fputc(RGB_WHITE, file);
+            } else {
+                fputc(RGB_BLACK, file);
+                fputc(RGB_BLACK, file);
+                fputc(RGB_BLACK, file);
+            }
         }
     }
 
     fclose(file);
 }
 
-int main() {
-    char *path = "tests/landscape.png";
+int main(int argc, char *argv[]) {
+    if(argc < 2) {
+        printf("Path required.\n");
+        return 1;
+    }
+
+    char *path = argv[1];
     size_t size = getFileSize(path);
 
     size_t buffer_size = size * 2;
