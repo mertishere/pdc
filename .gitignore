@@ -1,2 +1,4 @@
 tests/
+out/
+dist/
 output.ppm

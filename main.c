@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <math.h>
 
 #include "png.h"
 #include "huffman.h"
@@ -9,37 +10,107 @@
 #include "utils.h"
 #include "constants.h"
 
+float computeBrightness(Pixel *p) {
+    float brightness = R_FLOAT_COEFFICIENTS * (float)p->rgb.r;
+    brightness += G_FLOAT_COEFFICIENTS * (float)p->rgb.g;
+    brightness += B_FLOAT_COEFFICIENTS * (float)p->rgb.b;
+    return brightness;
+}
 
-void write_ppm(const char *filename, Pixel *pixels, int width, int height) {
-    FILE *file = fopen(filename, "wb");
-    if (!file) {
+void write_ppm(
+    const char *filename,
+    Pixel *pixels,
+    int width,
+    int height
+) {
+    char *outline_black = "out/outline.output.ppm";
+    FILE *outline_black_file = fopen(outline_black, "wb");
+    if (!outline_black_file) {
+        perror("fopen");
+        return;
+    }
+
+    char *fill_black = "out/black.output.ppm";
+    FILE *fill_black_file = fopen(fill_black, "wb");
+    if (!fill_black_file) {
         perror("fopen");
         return;
     }
 
     // P6 header
-    fprintf(file, "P6\n%d %d\n255\n", width, height);
+    fprintf(outline_black_file, "P6\n%d %d\n255\n", width, height);
+    fprintf(fill_black_file, "P6\n%d %d\n255\n", width, height);
 
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
+            // top left, middle and right pixel
+            Pixel *tlp = &pixels[(y - (y == 0 ? 0 : 1)) * width + (x - (x == 0 ? 0 : 1))];
+            Pixel *tmp = &pixels[(y - (y == 0 ? 0 : 1)) * width + x];
+            Pixel *trp = &pixels[(y - (y == 0 ? 0 : 1)) * width + (x + (x == (width - 1) ? 0 : 1))];
+
+            // left, and right pixel
+            Pixel *lp = &pixels[y * width + (x - (x == 0 ? 0 : 1))];
+            Pixel *rp = &pixels[y * width + (x + (x == (width - 1) ? 0 : 1))];
+
+            // bottom left, middle and right pixel
+            Pixel *blp = &pixels[(y + (y == (height - 1) ? 0 : 1)) * width + (x - (x == 0 ? 0 : 1))];
+            Pixel *bmp = &pixels[(y + (y == (height - 1) ? 0 : 1)) * width + x];
+            Pixel *brp = &pixels[(y + (y == (height - 1) ? 0 : 1)) * width + (x + (x == (width - 1) ? 0 : 1))];
+
+            // middle pixel
             Pixel *p = &pixels[y * width + x];
 
-            float brightness = R_FLOAT_COEFFICIENTS * (float)p->rgb.r;
-            brightness += G_FLOAT_COEFFICIENTS * (float)p->rgb.g;
-            brightness += B_FLOAT_COEFFICIENTS * (float)p->rgb.b;
-            if(brightness > 100.0) {
-                fputc(RGB_WHITE, file);
-                fputc(RGB_WHITE, file);
-                fputc(RGB_WHITE, file);
+            float brightness = computeBrightness(p);
+            brightness += computeBrightness(tlp);
+            brightness += computeBrightness(tmp);
+            brightness += computeBrightness(trp);
+            brightness += computeBrightness(lp);
+            brightness += computeBrightness(rp);
+            brightness += computeBrightness(blp);
+            brightness += computeBrightness(bmp);
+            brightness += computeBrightness(brp);
+            brightness /= 9;
+
+            // compute average
+            float center = computeBrightness(p);
+            float diff = 0.0f;
+
+            diff += fabsf(center - computeBrightness(tlp));
+            diff += fabsf(center - computeBrightness(tmp));
+            diff += fabsf(center - computeBrightness(trp));
+
+            diff += fabsf(center - computeBrightness(lp));
+            diff += fabsf(center - computeBrightness(rp));
+
+            diff += fabsf(center - computeBrightness(blp));
+            diff += fabsf(center - computeBrightness(bmp));
+            diff += fabsf(center - computeBrightness(brp));
+            diff /= 8.0f;
+
+            if (diff > 15.0f && brightness < 200.0f) {
+                fputc(RGB_BLACK, outline_black_file);
+                fputc(RGB_BLACK, outline_black_file);
+                fputc(RGB_BLACK, outline_black_file);
             } else {
-                fputc(RGB_BLACK, file);
-                fputc(RGB_BLACK, file);
-                fputc(RGB_BLACK, file);
+                fputc(RGB_WHITE, outline_black_file);
+                fputc(RGB_WHITE, outline_black_file);
+                fputc(RGB_WHITE, outline_black_file);
+            }
+
+            if (brightness < 160.0f) {
+                fputc(RGB_BLACK, fill_black_file);
+                fputc(RGB_BLACK, fill_black_file);
+                fputc(RGB_BLACK, fill_black_file);
+            } else {
+                fputc(RGB_WHITE, fill_black_file);
+                fputc(RGB_WHITE, fill_black_file);
+                fputc(RGB_WHITE, fill_black_file);
             }
         }
     }
 
-    fclose(file);
+    fclose(outline_black_file);
+    fclose(fill_black_file);
 }
 
 int main(int argc, char *argv[]) {

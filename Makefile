@@ -7,4 +7,5 @@ utils = src/utils/constants.c src/utils/conversions.c src/utils/strings.c src/ut
 
 pulse: main.c $(src) $(utils)
 	mkdir -p dist
+	mkdir -p out
 	$(CC) $(CFLAGS) -o dist/pdc main.c $(src) $(utils) $(LDFLAGS)
