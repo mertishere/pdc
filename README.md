@@ -18,7 +18,10 @@ cd pdc
 make
 ```
 
-To use PDC, simply modify the "char *path" within the main.c to any .png file of your choice. Recommended is to put the .png files for testing within a tests/ folder.
+To use PDC, simply pass the path as the first argument.
+```sh
+./dist/pdc landscape.png
+```
 
 ## Features
 
