@@ -37,7 +37,14 @@ const char HEX_KEYS[16] = {
     '8', '9', 'a', 'b', 'c', 'd', 'e', 'f',
 };
 
-const char *HEX_VALUES[16] = { "0000", "0001", "0010", "0011", "0100", "0101", "0110", "0111", "1000", "1001", "1010", "1011", "1100", "1101", "1110", "1111" };
+const char *HEX_VALUES[16] = { 
+    "0000", "0001", "0010", 
+    "0011", "0100", "0101", 
+    "0110", "0111", "1000", 
+    "1001", "1010", "1011", 
+    "1100", "1101", "1110", 
+    "1111" 
+};
 
 const int HCLEN_SIZE = 19;
 const int HCLEN_ORDER[19] = { 16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 };
@@ -45,10 +52,9 @@ const int HCLEN_ORDER[19] = { 16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13
 const int RGB_WHITE = 255;
 const int RGB_BLACK = 0;
 
-
-const float R_FLOAT_COEFFICIENTS = 0.299;
-const float G_FLOAT_COEFFICIENTS = 0.587;
-const float B_FLOAT_COEFFICIENTS = 0.114;
+const float R_FLOAT_COEFFICIENTS = 0.299f;
+const float G_FLOAT_COEFFICIENTS = 0.587f;
+const float B_FLOAT_COEFFICIENTS = 0.114f;
 
 const int BASE_DISTANCES[30] = {
     1,     2,     3,    4,
