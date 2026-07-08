@@ -6,34 +6,6 @@
 #include "utils.h"
 #include "constants.h"
 
-
-PNG initPng() {
-    IDAT idats[10];
-    RGB rgbs[10];
-
-    PNG png = {
-        .idats = idats,
-        .iend = {
-            .size = 0
-        },
-        .ihdr = {
-            .bits_per_pixel = 0,
-            .color_type = 0,
-            .compression_method = 0,
-            .filter_method = 0,
-            .height = 0,
-            .interlaced = 0,
-            .size = 0,
-            .width = 0,
-        },
-        .plte = {
-            .rgbs = rgbs,
-            .size = 0,
-        }
-    };
-}
-
-
 void getIhdr(PNG *png, char hex[], size_t *cbp) {
     size_t current_bit_position = *cbp;
 

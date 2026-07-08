@@ -631,7 +631,7 @@ void dynamicHuffman(
         current_bit_position += BIT_LENGTH;
 
         if(hlit_bit_storer_len > HCLEN_SIZE) {
-            printf("Returned bit=%lld\n", current_bit_position);
+            printf("Returned bit=%ld\n", current_bit_position);
             printf("HLIT bit storer exceeded HCLEN size\n");
             exit(0);
         }

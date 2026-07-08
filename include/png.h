@@ -56,7 +56,6 @@ typedef struct {
     Pixel *pixels;
 } Decompressed;
 
-extern PNG initPng();
 extern int countIdats(char hex[]);
 extern void getPng(PNG *png, char hex[]);
 

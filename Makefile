@@ -1,5 +1,6 @@
 CC=gcc
-CFLAGS=-I include
+CFLAGS=-Iinclude
+FLAGS=-Wall
 LDFLAGS=-lm
 
 src = src/decompress.c src/png.c src/lzss.c src/huffman.c src/filter.c
@@ -8,4 +9,4 @@ utils = src/utils/constants.c src/utils/conversions.c src/utils/strings.c src/ut
 pulse: main.c $(src) $(utils)
 	mkdir -p dist
 	mkdir -p out
-	$(CC) $(CFLAGS) -o dist/pdc main.c $(src) $(utils) $(LDFLAGS)
+	$(CC) $(CFLAGS) $(FLAGS) -o dist/pdc main.c $(src) $(utils) $(LDFLAGS)

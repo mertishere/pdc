@@ -98,10 +98,10 @@ void handleLzssStatic(
     current_bit_position += dist_symbol.extra;
     int distance_extra_bits = binaryToInt(distance_symbol_extra_slice, dist_symbol.extra, true);
 
-    int total_distance = dist_symbol.base + dist_symbol.extra;
+    int total_distance = dist_symbol.base + distance_extra_bits;
 
     if (current_complete_blocks_position < total_distance) {
-        printf("1. WARNING TOTAL DISTANCE FAR EXCEEDS CURRENT LENGTH! CL: %d | TD: %d\n", current_complete_blocks_position, total_distance);
+        printf("1. WARNING TOTAL DISTANCE FAR EXCEEDS CURRENT LENGTH! CL: %ld | TD: %d\n", current_complete_blocks_position, total_distance);
         exit(EXIT_FAILURE);
         return;
     }
@@ -193,7 +193,7 @@ void handleLzssDynamic(
     int total_distance = dist_symbol.base + distance_extra_bits;
     if (uncompressed_len < total_distance) {
         printf(
-            "2. WARNING TOTAL DISTANCE FAR EXCEEDS CURRENT LENGTH! CL: %d | TD: %d\n",
+            "2. WARNING TOTAL DISTANCE FAR EXCEEDS CURRENT LENGTH! CL: %ld | TD: %d\n",
             uncompressed_len,
             total_distance
         );
