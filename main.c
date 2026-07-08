@@ -57,18 +57,18 @@ void write_ppm(
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
             // top left, middle and right pixel
-            Pixel *tlp = &pixels[(y - (y == 0 ? 0 : 1)) * width + (x - (x == 0 ? 0 : 1))];
-            Pixel *tmp = &pixels[(y - (y == 0 ? 0 : 1)) * width + x];
-            Pixel *trp = &pixels[(y - (y == 0 ? 0 : 1)) * width + (x + (x == (width - 1) ? 0 : 1))];
+            Pixel *tlp = &pixels[(y - (y != 0)) * width + (x - (x != 0))];
+            Pixel *tmp = &pixels[(y - (y != 0)) * width + x];
+            Pixel *trp = &pixels[(y - (y != 0)) * width + (x + (x != (width - 1)))];
 
             // left, and right pixel
-            Pixel *lp = &pixels[y * width + (x - (x == 0 ? 0 : 1))];
-            Pixel *rp = &pixels[y * width + (x + (x == (width - 1) ? 0 : 1))];
+            Pixel *lp = &pixels[y * width + (x - (x != 0))];
+            Pixel *rp = &pixels[y * width + (x + (x != (width - 1)))];
 
             // bottom left, middle and right pixel
-            Pixel *blp = &pixels[(y + (y == (height - 1) ? 0 : 1)) * width + (x - (x == 0 ? 0 : 1))];
-            Pixel *bmp = &pixels[(y + (y == (height - 1) ? 0 : 1)) * width + x];
-            Pixel *brp = &pixels[(y + (y == (height - 1) ? 0 : 1)) * width + (x + (x == (width - 1) ? 0 : 1))];
+            Pixel *blp = &pixels[(y + (y != (height - 1))) * width + (x - (x != 0))];
+            Pixel *bmp = &pixels[(y + (y != (height - 1))) * width + x];
+            Pixel *brp = &pixels[(y + (y != (height - 1))) * width + (x + (x != (width - 1)))];
 
             // middle pixel
             Pixel *p = &pixels[y * width + x];
