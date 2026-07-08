@@ -635,6 +635,7 @@ void dynamicHuffman(
             printf("HLIT bit storer exceeded HCLEN size\n");
             exit(0);
         }
+
         hlit_bit_storer[hlit_bit_storer_len] = bit - INT_TO_ASCII_OFFSET;
         hlit_bit_storer_len++;
 
