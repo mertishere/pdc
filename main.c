@@ -3,6 +3,8 @@
 #include <string.h>
 #include <stdbool.h>
 #include <math.h>
+#include <dirent.h>
+#include <sys/stat.h>
 
 #include "png.h"
 #include "huffman.h"
@@ -23,17 +25,28 @@ void write_ppm(
     int width,
     int height
 ) {
+    DIR *dp = opendir("out");
+    if(dp == NULL) {
+        int d = mkdir("out", 0755); 
+        if(d < 0) {
+            printf("Making out/ directory failed.");
+            exit(0);
+        }
+    } else {
+        closedir(dp);
+    }
+
     char *outline_black = "out/outline.output.ppm";
     FILE *outline_black_file = fopen(outline_black, "wb");
     if (!outline_black_file) {
-        perror("fopen");
+        printf("Opening outline_black_file.ppm failed.");
         return;
     }
 
     char *fill_black = "out/black.output.ppm";
     FILE *fill_black_file = fopen(fill_black, "wb");
     if (!fill_black_file) {
-        perror("fopen");
+        printf("Opening fill_black_file.ppm failed.");
         return;
     }
 
