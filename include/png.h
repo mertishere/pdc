@@ -10,14 +10,14 @@ typedef struct {
 } RGB;
 
 typedef struct {
-    int size;
+    size_t size;
     RGB *rgbs;
 } PLTE;
 
 typedef struct {
-    int size;
-    int width;
-    int height;
+    size_t size;
+    size_t width;
+    size_t height;
     int bits_per_pixel;
     int color_type;
     int compression_method;
@@ -26,7 +26,7 @@ typedef struct {
 } IHDR;
 
 typedef struct {
-    int size;
+    size_t size;
     int compression_method;
     int compression_info;
     int zlib_fcheck_value;
@@ -35,7 +35,7 @@ typedef struct {
 } IDAT;
 
 typedef struct {
-    int size;
+    size_t size;
 } IEND;
 
 typedef struct {
@@ -56,7 +56,9 @@ typedef struct {
     Pixel *pixels;
 } Decompressed;
 
-extern int countIdats(char hex[]);
-extern void getPng(PNG *png, char hex[]);
+extern int countIdats(char hex[], size_t hex_size);
+extern int countRgbs(char hex[], size_t hex_size);
+
+extern void getPng(PNG *png, char hex[], size_t hex_size);
 
 #endif

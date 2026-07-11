@@ -9,6 +9,10 @@
 #include "utils.h"
 #include "huffman.h"
 
+#define HCLEN_SIZE 19
+// #define BIT_LENGTH 1
+#define BYTE_LENGTH 8
+
 void sort(
     int src[],
     int out[],
@@ -180,30 +184,44 @@ void buildHuffman(
 
 void noHuffman(
     char binary[],
-    size_t *cbp,
+    size_t binary_len,
+
+    size_t *bp,
 
     int uncompressed[],
     size_t *ul
 ) {
-    size_t current_bit_position = *cbp;
+    size_t binary_position = *bp;
     size_t uncompressed_len = *ul;
-    // skip the 5 bits to make a full byte out of the header |BFINAL (1b)|BTYPE(2b)|...(5b)|LEN|NLEN|...
-    current_bit_position += 5;
 
+    // skip the 5 bits to make a full byte out of the header |BFINAL (1b)|BTYPE(2b)|...(5b)|LEN|NLEN|...
+    binary_position += 5;
+
+    if (binary_position + BYTE_LENGTH * 2 > binary_len) { 
+        *bp = binary_len;
+        *ul = uncompressed_len; 
+        return;
+    }
 
     char len_slice[BYTE_LENGTH * 2 + 1];
-    writeBuffer(binary, len_slice, current_bit_position, current_bit_position + BYTE_LENGTH * 2);
+    writeBuffer(binary, len_slice, binary_position, binary_position + BYTE_LENGTH * 2);
     len_slice[BYTE_LENGTH * 2] = '\0';
 
     int len = binaryToInt(len_slice, BYTE_LENGTH * 2, true);
-    current_bit_position += BYTE_LENGTH * 2;
+    binary_position += BYTE_LENGTH * 2;
+
+    if (binary_position + BYTE_LENGTH * 2 > binary_len) { 
+        *bp = binary_len;
+        *ul = uncompressed_len; 
+        return;
+    }
 
     char nlen_slice[BYTE_LENGTH * 2 + 1];
-    writeBuffer(binary, nlen_slice, current_bit_position, current_bit_position + BYTE_LENGTH * 2);
+    writeBuffer(binary, nlen_slice, binary_position, binary_position + BYTE_LENGTH * 2);
     nlen_slice[BYTE_LENGTH * 2] = '\0';
 
     int nlen = binaryToInt(nlen_slice, BYTE_LENGTH * 2, true);
-    current_bit_position += BYTE_LENGTH * 2;
+    binary_position += BYTE_LENGTH * 2;
 
     if (len + nlen != 65535) {
         printf("invalid LEN and NLEN\n");
@@ -212,10 +230,10 @@ void noHuffman(
     }
 
     int enumerate = 0;
-    while (enumerate < len) {
+    while (enumerate < len && (binary_position + BYTE_LENGTH) <= binary_len) {
         char data_block_slice[BYTE_LENGTH];
-        writeBuffer(binary, data_block_slice, current_bit_position, current_bit_position + BYTE_LENGTH);
-        current_bit_position += BYTE_LENGTH;
+        writeBuffer(binary, data_block_slice, binary_position, binary_position + BYTE_LENGTH);
+        binary_position += BYTE_LENGTH;
         int parsed_data_block = binaryToInt(data_block_slice, BYTE_LENGTH, true);
         uncompressed[uncompressed_len] = parsed_data_block;
         uncompressed_len++;
@@ -223,21 +241,20 @@ void noHuffman(
         enumerate += 1;
     }
 
-    *cbp = current_bit_position;
+    *bp = binary_position;
     *ul = uncompressed_len;
 }
 
 void staticHuffman(
     char binary[],
     size_t binary_len,
-
-    size_t *cbp,
+    size_t *bp,
 
     int uncompressed[],
     size_t *ul
 ) {
-    size_t current_bit_position = *cbp;
-    size_t current_complete_blocks_position = *ul;
+    size_t binary_position = *bp;
+    size_t uncompressed_position = *ul;
 
     // fixed huffman tree
     // 0 - 143 | 8 bits   (00110000 - 10111111) (48 - 191)
@@ -249,40 +266,41 @@ void staticHuffman(
     char first_eight_slice[8];
     char first_nine_slice[9];
 
-    while (current_bit_position < binary_len) {
-        writeBuffer(binary, first_seven_slice, current_bit_position, current_bit_position + 7);
+    while (binary_position < binary_len) {
+        writeBuffer(binary, first_seven_slice, binary_position, binary_position + 7);
         int first_seven = binaryToInt(first_seven_slice, 7, false);
         if(first_seven >= 0 && first_seven <= 23) {
-            current_bit_position += 7;
+            binary_position += 7;
 
             int symbol = 256 + first_seven;
             if (symbol != 256) {
                 handleLzssStatic(
                     symbol,
                     binary,
-                    &current_bit_position,
+                    binary_len,
+                    &binary_position,
                     uncompressed,
-                    &current_complete_blocks_position
+                    &uncompressed_position
                 );
                 continue;
             } else break;
         }
 
-        writeBuffer(binary, first_eight_slice, current_bit_position, current_bit_position + 8);
+        writeBuffer(binary, first_eight_slice, binary_position, binary_position + 8);
         int first_eight = binaryToInt(first_eight_slice, 8, false);
 
         if (first_eight >= 48 && first_eight <= 191) {
-            current_bit_position += 8;
+            binary_position += 8;
 
-            uncompressed[current_complete_blocks_position] = 0 + first_eight - 48;
-            current_complete_blocks_position++;
-            uncompressed[current_complete_blocks_position] = '\0';
+            uncompressed[uncompressed_position] = 0 + first_eight - 48;
+            uncompressed_position++;
+            uncompressed[uncompressed_position] = '\0';
             continue;
         }
 
         // 280 - 287 | 8 bits (11000000 - 11000111) (192 - 199)
         if (first_eight >= 192 && first_eight <= 199) {
-            current_bit_position += 8;
+            binary_position += 8;
 
             int symbol = 280 + (first_eight - 192);
             if (symbol > 285) {
@@ -293,32 +311,33 @@ void staticHuffman(
             handleLzssStatic(
                 symbol,
                 binary,
-                &current_bit_position,
+                binary_len,
+                &binary_position,
                 uncompressed,
-                &current_complete_blocks_position
+                &uncompressed_position
             );
             continue;
         }
 
-        writeBuffer(binary, first_nine_slice, current_bit_position, current_bit_position + 9);
+        writeBuffer(binary, first_nine_slice, binary_position, binary_position + 9);
         int first_nine = binaryToInt(first_nine_slice, 9, false);
         if (first_nine >= 400 && first_nine <= 511) {
-            current_bit_position += 9;
+            binary_position += 9;
 
-            uncompressed[current_complete_blocks_position] = 144 + first_nine - 400;
-            current_complete_blocks_position++;
-            uncompressed[current_complete_blocks_position] = '\0';
+            uncompressed[uncompressed_position] = 144 + first_nine - 400;
+            uncompressed_position++;
+            uncompressed[uncompressed_position] = '\0';
             continue;
         }
     }
 
-    *cbp = current_bit_position;
-    *ul = current_complete_blocks_position;
+    *bp = binary_position;
+    *ul = uncompressed_position;
 }
 
 void symbolsBuilder(
     char binary[],
-    size_t *cbp,
+    size_t *bp,
     
     CodeLengthSymbols cls[],
     int cls_length,
@@ -341,15 +360,15 @@ void symbolsBuilder(
     //        18: Repeat a code length of 0 for 11 - 138 times
     //            (7 bits of length)
 
-    int current_bit_position = *cbp;
+    int binary_position = *bp;
     int builder_len = 0;
 
     int bit_storer[16];
     int bit_storer_len = 0;
 
     while (builder_len < limit) {
-        char bit = binary[current_bit_position];
-        current_bit_position += BIT_LENGTH;
+        char bit = binary[binary_position];
+        binary_position += BIT_LENGTH;
         bit_storer[bit_storer_len] = bit - INT_TO_ASCII_OFFSET;
         bit_storer_len++;
 
@@ -372,9 +391,9 @@ void symbolsBuilder(
                 int previous_code = builder[builder_len - 1];
 
                 char extra_bits_slice[2];
-                writeBuffer(binary, extra_bits_slice, current_bit_position, current_bit_position + 2);
+                writeBuffer(binary, extra_bits_slice, binary_position, binary_position + 2);
                 int extra_bits = binaryToInt(extra_bits_slice, 2, true);
-                current_bit_position += 2;
+                binary_position += 2;
 
                 int total_repeat = extra_bits + 3;
                 for (int i = 0; i < total_repeat; i++) {
@@ -386,9 +405,9 @@ void symbolsBuilder(
                 int previous_code = 0;
                 
                 char extra_bits_slice[3];
-                writeBuffer(binary, extra_bits_slice, current_bit_position, current_bit_position + 3);
+                writeBuffer(binary, extra_bits_slice, binary_position, binary_position + 3);
                 int extra_bits = binaryToInt(extra_bits_slice, 3, true);
-                current_bit_position += 3;
+                binary_position += 3;
 
                 int total_repeat = extra_bits + 3;
                 for (int i = 0; i < total_repeat; i++) {
@@ -400,9 +419,9 @@ void symbolsBuilder(
                 int previous_code = 0;
 
                 char extra_bits_slice[7];
-                writeBuffer(binary, extra_bits_slice, current_bit_position, current_bit_position + 7);
+                writeBuffer(binary, extra_bits_slice, binary_position, binary_position + 7);
                 int extra_bits = binaryToInt(extra_bits_slice, 7, true);
-                current_bit_position += 7;
+                binary_position += 7;
 
                 int total_repeat = extra_bits + 11;
                 for (int i = 0; i < total_repeat; i++) {
@@ -415,48 +434,60 @@ void symbolsBuilder(
         }
     }
 
-    *cbp = current_bit_position;
+    *bp = binary_position;
 }
 
 void huffmanBuilder(
     char binary[],
+    size_t binary_len,
+
     Huffman *huffman,
-    size_t *cbp
+    size_t *bp
 ) {
-    size_t current_bit_position = *cbp;
+    size_t binary_position = *bp;
+
+    huffman->hlit = 257;
+    huffman->hdist = 1;
+    huffman->hclen = 4;
+
+    if (binary_position + 5 > binary_len) { *bp = binary_position; return; }
 
     char hlit[5];
-    writeBuffer(binary, hlit, current_bit_position, current_bit_position + 5);
-    current_bit_position += 5;
-    huffman->hlit = 257 + binaryToInt(hlit, 5, true);;
-    
-    char hdist[5];
-    writeBuffer(binary, hdist, current_bit_position, current_bit_position + 5);
-    current_bit_position += 5;
-    huffman->hdist = 1 + binaryToInt(hdist, 5, true);;
-    
-    char hclen[4];
-    writeBuffer(binary, hclen, current_bit_position, current_bit_position + 4);
-    current_bit_position += 4;
-    huffman->hclen = 4 + binaryToInt(hclen, 4, true);;
+    writeBuffer(binary, hlit, binary_position, binary_position + 5);
+    binary_position += 5;
+    huffman->hlit = 257 + binaryToInt(hlit, 5, true);
 
-    *cbp = current_bit_position;
+    if (binary_position + 5 > binary_len) { *bp = binary_position; return; }
+
+    char hdist[5];
+    writeBuffer(binary, hdist, binary_position, binary_position + 5);
+    binary_position += 5;
+    huffman->hdist = 1 + binaryToInt(hdist, 5, true);
+
+    if (binary_position + 4 > binary_len) { *bp = binary_position; return; }
+
+    char hclen[4];
+    writeBuffer(binary, hclen, binary_position, binary_position + 4);
+    binary_position += 4;
+    huffman->hclen = 4 + binaryToInt(hclen, 4, true);
+
+    *bp = binary_position;
 }
 
 void dynamicHuffman(
     char binary[],
     size_t binary_len,
 
-    size_t *cbp,
+    size_t *bp,
 
     int uncompressed[],
     size_t *ul,
 
     Huffman *huffman
 ) {
-    huffmanBuilder(binary, huffman, cbp);
+    huffmanBuilder(binary, binary_len, huffman, bp);
 
-    size_t current_bit_position = *cbp;
+    size_t binary_position = *bp;
     size_t uncompressed_len = *ul;
 
     // HCLEN length
@@ -469,9 +500,11 @@ void dynamicHuffman(
     }
 
     for (int i = 0; i < huffman->hclen; i++) {
+        if (binary_position + 3 > binary_len) break;
+
         char list_code_length[3];
-        writeBuffer(binary, list_code_length, current_bit_position, current_bit_position + 3);
-        current_bit_position += 3;
+        writeBuffer(binary, list_code_length, binary_position, binary_position + 3);
+        binary_position += 3;
         int code_length_int = binaryToInt(list_code_length, 3, true);
 
         if(code_length_int > 0) code_length_count++;
@@ -479,15 +512,15 @@ void dynamicHuffman(
         code_lengths[HCLEN_ORDER[i]] = code_length_int;
     }
 
-    HuffmanCode code_creation[code_length_count];
+    HuffmanCode code_creation[code_length_count > 0 ? code_length_count : 1];
     handleHuffmanCodeCreation(code_creation, code_lengths, HCLEN_SIZE);
 
     int used_indexes[HCLEN_SIZE];
     for(int i = 0; i < HCLEN_SIZE; i++) {
         used_indexes[i] = -1;
     }
-    int used_indexes_len;
-    
+    int used_indexes_len = 0;
+
     HuffmanCode huffman_codes[HCLEN_SIZE];
     int huffman_codes_len = 0;
 
@@ -552,7 +585,7 @@ void dynamicHuffman(
 
     symbolsBuilder(
         binary, 
-        &current_bit_position, 
+        &binary_position, 
 
         cls,
         cls_size,
@@ -566,7 +599,7 @@ void dynamicHuffman(
         if(hlit_builder[i] != 0) hlit_huffman_codes_size++;
     }
 
-    CodeLengthSymbols hlit_huffman_codes[hlit_huffman_codes_size];
+    CodeLengthSymbols hlit_huffman_codes[hlit_huffman_codes_size > 0 ? hlit_huffman_codes_size : 1];
     for(int i = 0; i < hlit_huffman_codes_size; i++) {
         for(int j = 0; j < 16; j++) {
             hlit_huffman_codes[i].code[j] = 0;
@@ -591,7 +624,7 @@ void dynamicHuffman(
 
     symbolsBuilder(
         binary,
-        &current_bit_position,
+        &binary_position,
 
         cls,
         HCLEN_SIZE,
@@ -605,7 +638,7 @@ void dynamicHuffman(
         if(hdist_builder[i] != 0) hdist_huffman_codes_size++;
     }
 
-    CodeLengthSymbols hdist_huffman_codes[hdist_huffman_codes_size];
+    CodeLengthSymbols hdist_huffman_codes[hdist_huffman_codes_size > 0 ? hdist_huffman_codes_size : 1];
     for(int i = 0; i < hdist_huffman_codes_size; i++) {
         hdist_huffman_codes[i].symbol = 0;
         hdist_huffman_codes[i].len = 0;
@@ -626,12 +659,12 @@ void dynamicHuffman(
     int hlit_bit_storer[HCLEN_SIZE];
     int hlit_bit_storer_len = 0;
 
-    while (current_bit_position < binary_len) {
-        char bit = binary[current_bit_position];
-        current_bit_position += BIT_LENGTH;
+    while (binary_position < binary_len) {
+        char bit = binary[binary_position];
+        binary_position += BIT_LENGTH;
 
-        if(hlit_bit_storer_len > HCLEN_SIZE) {
-            printf("Returned bit=%ld\n", current_bit_position);
+        if(hlit_bit_storer_len >= HCLEN_SIZE) {
+            printf("Returned bit=%ld\n", binary_position);
             printf("HLIT bit storer exceeded HCLEN size\n");
             exit(0);
         }
@@ -666,7 +699,7 @@ void dynamicHuffman(
             binary,
             binary_len,
 
-            &current_bit_position,
+            &binary_position,
 
             uncompressed, 
             &uncompressed_len,
@@ -676,7 +709,7 @@ void dynamicHuffman(
         );
     }
 
-    *cbp = current_bit_position;
+    *bp = binary_position;
     *ul = uncompressed_len;
 }
 
@@ -684,7 +717,7 @@ void handleBtype(
     char binary[],
     size_t binary_len,
 
-    size_t *cbp,
+    size_t *bp,
 
     int uncompressed[],
     size_t *ul,
@@ -693,13 +726,13 @@ void handleBtype(
 ) {
     switch (huffman->btype) {
         case 0:
-            noHuffman(binary, cbp, uncompressed, ul);
+            noHuffman(binary, binary_len, bp, uncompressed, ul);
             break;
         case 1:
-            staticHuffman(binary, binary_len, cbp, uncompressed, ul);
+            staticHuffman(binary, binary_len, bp, uncompressed, ul);
             break;
         case 2:
-            dynamicHuffman(binary, binary_len, cbp, uncompressed, ul, huffman);
+            dynamicHuffman(binary, binary_len, bp, uncompressed, ul, huffman);
             break;
         default:
             printf("invalid huffman");
@@ -710,28 +743,30 @@ void handleBtype(
 void getHuffman(
     char binary[],
     size_t binary_len,
-
+    
     int uncompressed[],
     size_t *ul,
 
     Huffman *huffman
 ) {
-    size_t cbp = 0;
+    size_t bp = 0;
     while (true) {
-        if (cbp >= binary_len) break;
+        // Check for the BFINAL and BTYPE
+        if (bp + BIT_LENGTH + BIT_LENGTH * 2 >= binary_len) break;
 
-        char bfinal = binary[cbp];
-        cbp += BIT_LENGTH;
+        char bfinal[BIT_LENGTH];
+        writeBuffer(binary, bfinal, bp, bp + BIT_LENGTH);
+        bp += BIT_LENGTH;
 
-        huffman->bfinal = binaryToInt(&bfinal, BIT_LENGTH, true);
+        huffman->bfinal = binaryToInt(bfinal, BIT_LENGTH, true);
 
         char btype[BIT_LENGTH * 2];
-        writeBuffer(binary, btype, cbp, cbp + BIT_LENGTH * 2);
+        writeBuffer(binary, btype, bp, bp + BIT_LENGTH * 2);
 
-        cbp += BIT_LENGTH * 2;
+        bp += BIT_LENGTH * 2;
         huffman->btype = binaryToInt(btype, BIT_LENGTH * 2, true);
 
-        handleBtype(binary, binary_len, &cbp, uncompressed, ul, huffman);
+        handleBtype(binary, binary_len, &bp, uncompressed, ul, huffman);
 
         if (huffman->bfinal == 1) break;
     }

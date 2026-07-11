@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
 
 #include "png.h"
 #include "utils.h"
@@ -757,8 +758,14 @@ void getFilter(
 
     PNG *png
 ) {
-    int image_width = png->ihdr.width;
-    int image_height = png->ihdr.height;
+    size_t image_width = png->ihdr.width;
+    size_t image_height = png->ihdr.height;
+    
+    // The row size is 1 + width*mult (mult up to 4) and is passed as an int.
+    // Reject negative dimensions and widths large enough to overflow it.
+    if (image_width < 0 || image_height < 0 || image_width > (__SIZE_MAX__ - 1) / 4) {
+        return;
+    }
 
     switch (png->ihdr.color_type) {
         case 0: {

@@ -12,9 +12,11 @@ typedef struct {
 extern void handleLzssStatic(
     int symbol,
     char binary[],
-    size_t *cbp,
+    size_t binary_len,
+    size_t *bp,
+
     int uncompressed[],
-    size_t *ul
+    size_t *up
 );
 
 extern void handleLzssDynamic(
@@ -23,10 +25,10 @@ extern void handleLzssDynamic(
     char binary[],
     size_t binary_len,
     
-    size_t *cbp,
+    size_t *bp,
     
     int uncompressed[],
-    size_t *ul,
+    size_t *up,
     
     CodeLengthSymbols hdist_huffman_codes[],
     size_t hdist_huffman_codes_size
