@@ -12,18 +12,11 @@
 #include "utils.h"
 #include "constants.h"
 
-float computeBrightness(Pixel *p) {
-    float brightness = R_FLOAT_COEFFICIENTS * (float)p->rgb.r;
-    brightness += G_FLOAT_COEFFICIENTS * (float)p->rgb.g;
-    brightness += B_FLOAT_COEFFICIENTS * (float)p->rgb.b;
-    return brightness;
-}
 
-void write_ppm(
-    const char *filename,
+void writePPM(
     Pixel *pixels,
-    int width,
-    int height
+    size_t pixel_size,
+    PNG png
 ) {
     DIR *dp = opendir("out");
     if(dp == NULL) {
@@ -50,80 +43,83 @@ void write_ppm(
         return;
     }
 
+    char *gaussian = "out/gaussian.output.ppm";
+    FILE *gaussian_file = fopen(gaussian, "wb");
+    if (!gaussian_file) {
+        printf("Opening gaussian_file.ppm failed.");
+        return;
+    }
+
+    int width = png.ihdr.width;
+    int height = png.ihdr.height;
+
     // P6 header
     fprintf(outline_black_file, "P6\n%d %d\n255\n", width, height);
     fprintf(fill_black_file, "P6\n%d %d\n255\n", width, height);
+    fprintf(gaussian_file, "P6\n%d %d\n255\n", width, height);
+
+    Pixel *gaussian_pixels = malloc(pixel_size * sizeof(Pixel));
+    gaussianBlur(pixels, gaussian_pixels, png);
+
+    Pixel *outline_pixels = malloc(pixel_size * sizeof(Pixel));
+    outlineBlack(pixels, outline_pixels, png);
+
+    Pixel *fill_pixels = malloc(pixel_size * sizeof(Pixel));
+    fillBlack(pixels, fill_pixels, png);
 
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
-            // top left, middle and right pixel
-            Pixel *tlp = &pixels[(y - (y != 0)) * width + (x - (x != 0))];
-            Pixel *tmp = &pixels[(y - (y != 0)) * width + x];
-            Pixel *trp = &pixels[(y - (y != 0)) * width + (x + (x != (width - 1)))];
+            // write fill file
+            int index = y * width + x;
+            Pixel fbp = fill_pixels[index];
+            fputc(fbp.rgb.r, fill_black_file);
+            fputc(fbp.rgb.g, fill_black_file);
+            fputc(fbp.rgb.b, fill_black_file);
 
-            // left, and right pixel
-            Pixel *lp = &pixels[y * width + (x - (x != 0))];
-            Pixel *rp = &pixels[y * width + (x + (x != (width - 1)))];
 
-            // bottom left, middle and right pixel
-            Pixel *blp = &pixels[(y + (y != (height - 1))) * width + (x - (x != 0))];
-            Pixel *bmp = &pixels[(y + (y != (height - 1))) * width + x];
-            Pixel *brp = &pixels[(y + (y != (height - 1))) * width + (x + (x != (width - 1)))];
+            // write outline file
+            Pixel olp = outline_pixels[index];
+            fputc(olp.rgb.r, outline_black_file);
+            fputc(olp.rgb.g, outline_black_file);
+            fputc(olp.rgb.b, outline_black_file);
 
-            // middle pixel
-            Pixel *p = &pixels[y * width + x];
-
-            float brightness = computeBrightness(p);
-            brightness += computeBrightness(tlp);
-            brightness += computeBrightness(tmp);
-            brightness += computeBrightness(trp);
-            brightness += computeBrightness(lp);
-            brightness += computeBrightness(rp);
-            brightness += computeBrightness(blp);
-            brightness += computeBrightness(bmp);
-            brightness += computeBrightness(brp);
-            brightness /= 9;
-
-            // compute average
-            float center = computeBrightness(p);
-            float diff = 0.0f;
-
-            diff += fabsf(center - computeBrightness(tlp));
-            diff += fabsf(center - computeBrightness(tmp));
-            diff += fabsf(center - computeBrightness(trp));
-
-            diff += fabsf(center - computeBrightness(lp));
-            diff += fabsf(center - computeBrightness(rp));
-
-            diff += fabsf(center - computeBrightness(blp));
-            diff += fabsf(center - computeBrightness(bmp));
-            diff += fabsf(center - computeBrightness(brp));
-            diff /= 8.0f;
-
-            if (diff > 15.0f && brightness < 200.0f) {
-                fputc(RGB_BLACK, outline_black_file);
-                fputc(RGB_BLACK, outline_black_file);
-                fputc(RGB_BLACK, outline_black_file);
-            } else {
-                fputc(RGB_WHITE, outline_black_file);
-                fputc(RGB_WHITE, outline_black_file);
-                fputc(RGB_WHITE, outline_black_file);
+            if(olp.rgb.r != RGB_BLACK || fbp.rgb.r != RGB_BLACK) {
+                fputc(RGB_WHITE, gaussian_file);
+                fputc(RGB_WHITE, gaussian_file);
+                fputc(RGB_WHITE, gaussian_file);   
+                continue;
             }
 
-            if (brightness < 160.0f) {
-                fputc(RGB_BLACK, fill_black_file);
-                fputc(RGB_BLACK, fill_black_file);
-                fputc(RGB_BLACK, fill_black_file);
-            } else {
-                fputc(RGB_WHITE, fill_black_file);
-                fputc(RGB_WHITE, fill_black_file);
-                fputc(RGB_WHITE, fill_black_file);
-            }
+            // write gaussian file
+            Pixel op = pixels[index];
+            float op_total = 0;
+            op_total += op.rgb.r;
+            op_total += op.rgb.g;
+            op_total += op.rgb.b;
+            op_total /= 3;
+
+            Pixel p = gaussian_pixels[index];
+            float p_total = 0;
+            p_total += p.rgb.r;
+            p_total += p.rgb.g;
+            p_total += p.rgb.b;
+            p_total /= 3;
+
+            int sad = abs((int)op_total - (int)p_total);
+
+            fputc(sad, gaussian_file);
+            fputc(sad, gaussian_file);
+            fputc(sad, gaussian_file);
         }
     }
 
+    free(gaussian_pixels);
+    free(outline_pixels);
+    free(fill_pixels);
+
     fclose(outline_black_file);
     fclose(fill_black_file);
+    fclose(gaussian_file);
 }
 
 int main(int argc, char *argv[]) {
@@ -135,25 +131,35 @@ int main(int argc, char *argv[]) {
     char *path = argv[1];
     size_t size = getFileSize(path);
 
-    size_t buffer_size = size * 2;
+    size_t buffer_size = size + BIT_LENGTH;
     char buffer[buffer_size];
-    
-    size_t hex_size = size;
+
+    size_t hex_size = size * 2 + BIT_LENGTH;
     char hex[hex_size];
     
-    getHexDump(
-        buffer, 
+    size_t hex_len = getHexDump(
+        buffer,
         buffer_size,
-        
-        hex, 
-        hex_size, 
+
+        hex,
+        hex_size,
         path
     );
 
-    int idats_amount = countIdats(hex);
+    int idats_amount = countIdats(hex, hex_len);
+    IDAT *idats = malloc(idats_amount * sizeof(IDAT));
+    if(idats == NULL) {
+        printf("Allocation failed (idats).\n");
+        exit(0);
+    }
 
-    IDAT idats[idats_amount];
-    RGB rgbs[10];
+    int rgbs_amount = countRgbs(hex, hex_len);
+    RGB *rgbs = malloc(rgbs_amount * sizeof(RGB));
+    if(rgbs == NULL) {
+        printf("Allocation failed (rgbs).\n");
+        exit(0);
+    }
+
     PNG png = {
         .idats = idats,
         .iend = {
@@ -175,7 +181,7 @@ int main(int argc, char *argv[]) {
         }
     };
     
-    getPng(&png, hex);
+    getPng(&png, hex, hex_len);
     size_t idats_size = 0;
     for(int i = 0; i < idats_amount; i++) {
         size_t idat_data_size = png.idats[i].size;
@@ -243,17 +249,23 @@ int main(int argc, char *argv[]) {
             break;
     }
 
-    int *uncompressed = malloc(png.ihdr.width * png.ihdr.height * size_multiplicator * sizeof(int));
+    size_t uncompressed_size = png.ihdr.width * png.ihdr.height * size_multiplicator;
+    int *uncompressed = malloc(uncompressed_size * sizeof(int));
     if(uncompressed == NULL) {
         printf("Allocation failed (uncompressed).\n");
         exit(0);
     }
 
     size_t uncompressed_len = 0;
-    getHuffman(binary, binary_len, uncompressed, &uncompressed_len, &huffman);
+    getHuffman(
+        binary,
+        binary_len,
+        uncompressed,
+        &uncompressed_len,
+        &huffman
+    );
     
     size_t pixels_size = png.ihdr.height * (1 + png.ihdr.width * size_multiplicator);
-
     Pixel *pixels = malloc(pixels_size * sizeof(Pixel));
     if(pixels == NULL) {
         printf("Allocation failed (pixels).\n");
@@ -270,7 +282,7 @@ int main(int argc, char *argv[]) {
         &png
     );
 
-    write_ppm("output.ppm", pixels, png.ihdr.width, png.ihdr.height);
+    writePPM(pixels, pixels_len, png);
 
     free(binary);
     free(uncompressed);
@@ -278,5 +290,8 @@ int main(int argc, char *argv[]) {
     for(int i = 0; i < idats_amount; i++) {
         free(png.idats[i].data);
     }
+
+    free(idats);
+    free(rgbs);
     return 0;
 }
