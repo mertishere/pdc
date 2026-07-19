@@ -36,7 +36,7 @@ int _neigbourCheck(
     int index,
     PNG png
 ) {
-    if(isInArray(boundarys, boundarys_len, index)) return boundarys_len;
+    // if(isInArray(boundarys, boundarys_len, index)) return boundarys_len;
 
     size_t len = boundarys_len;
     int width = png.ihdr.width;
