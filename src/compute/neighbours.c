@@ -50,6 +50,7 @@ int _neigbourCheck(
     positions[6] = index - width;
     positions[7] = index - width + 1;
 
+    int similarities = 0;
     for(int i = 0; i < 8; i++) {
         int pos = positions[i];
         if(pos < 0 || pos >= pixel_size) continue;
@@ -57,7 +58,11 @@ int _neigbourCheck(
         Pixel pixel = pixels[pos];
         if(pixel.rgb.r == RGB_WHITE) continue;
 
-        if(isInArray(boundarys, boundarys_len, pos)) continue;
+        if(isInArray(boundarys, boundarys_len, pos)) {
+            similarities++;
+            continue;
+        }
+        if(similarities > 4) break;
         if(len >= boundary_size) break;
         boundarys[len] = pos;
         len++;
@@ -72,7 +77,7 @@ int _neigbourCheck(
 
             pos,
             png
-        );        
+        );
     }
 
     return len;
@@ -110,7 +115,7 @@ void neighbourChecks(
                 );
             }
 
-            size_t boundarys_size = 512;
+            size_t boundarys_size = 512 * 8;
             size_t boundarys_len = 0;
             int boundarys[boundarys_size]; // max
 
