@@ -338,7 +338,7 @@ int main(int argc, char *argv[]) {
         
         &huffman
     );
-    
+
     size_t pixels_size = png.ihdr.height * (1 + png.ihdr.width * size_multiplicator);
     Pixel *pixels = malloc(pixels_size * sizeof(Pixel));
     if(pixels == NULL) {
