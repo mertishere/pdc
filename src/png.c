@@ -330,12 +330,12 @@ void getIdat(
 
     if((hex_position + BIT_LENGTH) > hex_size) return;
     char deflate_compression_info[BIT_LENGTH];
-    writeBuffer(hex, deflate_compression_info, hex_position, hex_position + BIT_LENGTH);
+    deflate_compression_info[0] = hex[hex_position];
     hex_position += BIT_LENGTH;
     
     if((hex_position + BIT_LENGTH) > hex_size) return;
     char deflate_compression_method[BIT_LENGTH];
-    writeBuffer(hex, deflate_compression_method, hex_position, hex_position + BIT_LENGTH);
+    deflate_compression_method[0] = hex[hex_position];
     hex_position += BIT_LENGTH;
     
     if((hex_position + BIT_LENGTH * 2) > hex_size) return;
@@ -413,8 +413,8 @@ void getIdat(
     hex_position += BYTE_LENGTH;
 
     // define IDAT
-    png->idats[idat_index].compression_info = hexToInt(deflate_compression_info, BYTE_LENGTH);
-    png->idats[idat_index].compression_method = hexToInt(deflate_compression_method, BYTE_LENGTH);
+    png->idats[idat_index].compression_info = hexToInt(deflate_compression_info, BIT_LENGTH);
+    png->idats[idat_index].compression_method = hexToInt(deflate_compression_method, BIT_LENGTH);
     png->idats[idat_index].adler_zlib_checksum = adler_zlib_checksum;
     png->idats[idat_index].zlib_fcheck_value = validation_value;
     // png->idats[idat_index].crc = idat_png_crc;
