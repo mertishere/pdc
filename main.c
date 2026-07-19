@@ -112,10 +112,12 @@ void writePPM(
         for(size_t j = 0; j < points_len; j++) {
             int p = boundary.points[j];
             Pixel gp = gaussian_pixels[p];
+            Pixel op = pixels[p];
+            float f = computeBrightness(op);
             
             points[j].x = p % png.ihdr.width;
             points[j].y = p / png.ihdr.height;
-            points[j].z = gp.rgb.r * 100.0f / 255.0f;
+            points[j].z = (f - gp.rgb.r) * 100.0f / 255.0f;
             points[j].valid = false;
         }
 
