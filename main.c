@@ -30,10 +30,17 @@ void writePPM(
         closedir(dp);
     }
 
-    char *neighbour = "out/neighbour.output.ppm";
+    const char *neighbour = "out/neighbour.output.ppm";
     FILE *neighbour_file = fopen(neighbour, "wb");
     if (!neighbour_file) {
         printf("Opening neighbour.output.ppm failed.");
+        return;
+    }
+
+    const char *gaussian = "out/gaussian.output.ppm";
+    FILE *gaussian_file = fopen(gaussian, "wb");
+    if (!gaussian_file) {
+        printf("Opening gaussian.output.ppm failed.");
         return;
     }
 
@@ -42,6 +49,7 @@ void writePPM(
 
     // P6 header
     fprintf(neighbour_file, "P6\n%d %d\n255\n", width, height);
+    fprintf(gaussian_file, "P6\n%d %d\n255\n", width, height);
 
     Pixel *outline_pixels = malloc(pixel_size * sizeof(Pixel));
     outlineBlack(
@@ -87,6 +95,12 @@ void writePPM(
 
     Pixel *gaussian_pixels = malloc(pixel_size * sizeof(Pixel));
     gaussianBlur(pixels, pixel_size, gaussian_pixels, pixel_size, png);
+    for(size_t i = 0; i < pixel_size; i++) {
+        Pixel pixel = gaussian_pixels[i];
+        fputc(pixel.rgb.r, gaussian_file);
+        fputc(pixel.rgb.g, gaussian_file);
+        fputc(pixel.rgb.b, gaussian_file);
+    }
 
     int vertexes = 1;
     FILE *obj_file = fopen("out/output.obj", "w");
@@ -144,11 +158,11 @@ void writePPM(
         for (int x = 0; x < width; x++) {
             int index = y * width + x;
 
-            // write gaussian file
-            Pixel m = neighbour_pixels[index];
-            fputc(m.rgb.r, neighbour_file);
-            fputc(m.rgb.g, neighbour_file);
-            fputc(m.rgb.b, neighbour_file);
+            // write neighbour file
+            Pixel pixel = neighbour_pixels[index];
+            fputc(pixel.rgb.r, neighbour_file);
+            fputc(pixel.rgb.g, neighbour_file);
+            fputc(pixel.rgb.b, neighbour_file);
         }
     }
 
