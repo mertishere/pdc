@@ -261,7 +261,7 @@ int main(int argc, char *argv[]) {
         size_t idat_data_size = png.idats[i].size;
         idats_size += idat_data_size;
     }
-    
+
     // - 4 * 4 (because of the first IDAT)
     size_t binary_size = idats_size * 8 - (4 * 4);
     size_t binary_len = 0;
@@ -335,7 +335,7 @@ int main(int argc, char *argv[]) {
             break;
     }
 
-    size_t uncompressed_size = png.ihdr.width * png.ihdr.height * (size_multiplicator + 2);
+    size_t uncompressed_size = png.ihdr.height * (1 + png.ihdr.width * size_multiplicator);
     int *uncompressed = malloc(uncompressed_size * sizeof(int));
     if(uncompressed == NULL) {
         printf("Allocation failed (uncompressed).\n");
