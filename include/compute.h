@@ -32,6 +32,7 @@ extern void gaussianBlur(
     size_t pixels_size,
     Pixel *output,
     size_t output_size,
+    int radius,
     PNG png
 );
 

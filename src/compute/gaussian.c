@@ -13,6 +13,33 @@
 #include "utils.h"
 #include "compute.h"
 
+void generateGaussianKernel(
+    float **kernel,
+    int radius,
+    float sigma
+) {
+    int size = radius * 2 + 1;
+    float sum = 0.0f;
+
+    for (int y = -radius; y <= radius; y++) {
+        for (int x = -radius; x <= radius; x++) {
+
+            float value = expf(
+                -(x * x + y * y) / (2.0f * sigma * sigma)
+            );
+
+            kernel[y + radius][x + radius] = value;
+            sum += value;
+        }
+    }
+
+    for (int y = 0; y < size; y++) {
+        for (int x = 0; x < size; x++) {
+            kernel[y][x] /= sum;
+        }
+    }
+}
+
 void gaussianBlur(
     Pixel *pixels,
     size_t pixels_size,
@@ -20,14 +47,20 @@ void gaussianBlur(
     Pixel *output,
     size_t output_size,
 
+    int radius,
+
     PNG png
 ) {
-    // 3x3 gaussian kernel
-    float kernel[3][3] = {
-        {1.0/16, 2.0/16, 1.0/16},
-        {2.0/16, 4.0/16, 2.0/16},
-        {1.0/16, 2.0/16, 1.0/16}
-    };
+    int kernel_size = radius * 2 + 1;
+    float **kernel = malloc(kernel_size * sizeof(float *));
+    for (int i = 0; i < kernel_size; i++) {
+        kernel[i] = malloc(kernel_size * sizeof(float));
+    }
+    generateGaussianKernel(
+        kernel,
+        radius,
+        radius / 2.0f
+    );
 
     int width = png.ihdr.width;
     int height = png.ihdr.height;
@@ -38,7 +71,13 @@ void gaussianBlur(
 
             for (int ky = -1; ky <= 1; ky++) {
                 for (int kx = -1; kx <= 1; kx++) {
-                    size_t index = (y + ky) * width + (x + kx);
+                    int px = x + kx;
+                    int py = y + ky;
+
+                    px = px < 0 ? 0 : px >= width ? width - 1 : px;
+                    py = py < 0 ? 0 : py >= height ? height - 1 : py;
+
+                    size_t index = py * width + px;
                     if(index >= pixels_size) return;
 
                     Pixel pixel = pixels[index];
@@ -57,4 +96,9 @@ void gaussianBlur(
             output[index].rgb.a = 255;
         }
     }
+
+    for(int i = 0; i < kernel_size; i++) {
+        free(kernel[i]);
+    }
+    free(kernel);
 }

@@ -109,7 +109,15 @@ void writePPM(
     }
 
     Pixel *gaussian_pixels = malloc(pixel_size * sizeof(Pixel));
-    gaussianBlur(pixels, pixel_size, gaussian_pixels, pixel_size, png);
+    gaussianBlur(
+        pixels,
+        pixel_size,
+        gaussian_pixels,
+        pixel_size,
+        3,
+        png
+    );
+
     for(size_t i = 0; i < pixel_size; i++) {
         Pixel pixel = gaussian_pixels[i];
         fputc(pixel.rgb.r, gaussian_file);
