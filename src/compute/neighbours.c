@@ -58,7 +58,7 @@ int _neigbourCheck(
         if(pixel.rgb.r == RGB_WHITE) continue;
 
         if(isInArray(boundarys, boundarys_len, pos)) continue;
-        if(len >= boundary_size) return len;
+        if(len >= boundary_size) break;
         boundarys[len] = pos;
         len++;
 
