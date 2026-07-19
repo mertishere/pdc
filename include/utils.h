@@ -38,6 +38,7 @@ extern size_t getFileSize(char *path);
 typedef struct {
     float x;
     float y;
+    float z;
     bool valid;
 } DPPoint;
 
