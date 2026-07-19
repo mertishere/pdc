@@ -191,11 +191,11 @@ int main(int argc, char *argv[]) {
     size_t size = getFileSize(path);
 
     size_t buffer_size = size + BIT_LENGTH;
-    char buffer[buffer_size];
+    char *buffer = malloc(buffer_size * sizeof(char));
 
-    size_t hex_size = buffer_size * 2 + BIT_LENGTH;
-    char hex[hex_size];
-   
+    size_t hex_size = size * 2 + BIT_LENGTH;
+    char *hex = malloc(hex_size * sizeof(char));
+
     size_t hex_len = getHexDump(
         buffer,
         buffer_size,
@@ -358,6 +358,8 @@ int main(int argc, char *argv[]) {
 
     writePPM(pixels, pixels_position, png);
 
+    free(buffer);
+    free(hex);
     free(binary);
     free(uncompressed);
     free(pixels);
