@@ -11,6 +11,7 @@
 #include "filter.h"
 #include "utils.h"
 #include "constants.h"
+#include "compute.h"
 
 
 void writePPM(
@@ -29,24 +30,10 @@ void writePPM(
         closedir(dp);
     }
 
-    char *outline_black = "out/outline.output.ppm";
-    FILE *outline_black_file = fopen(outline_black, "wb");
-    if (!outline_black_file) {
-        printf("Opening outline_black_file.ppm failed.");
-        return;
-    }
-
-    char *fill_black = "out/black.output.ppm";
-    FILE *fill_black_file = fopen(fill_black, "wb");
-    if (!fill_black_file) {
-        printf("Opening fill_black_file.ppm failed.");
-        return;
-    }
-
-    char *gaussian = "out/gaussian.output.ppm";
-    FILE *gaussian_file = fopen(gaussian, "wb");
-    if (!gaussian_file) {
-        printf("Opening gaussian_file.ppm failed.");
+    char *neighbour = "out/neighbour.output.ppm";
+    FILE *neighbour_file = fopen(neighbour, "wb");
+    if (!neighbour_file) {
+        printf("Opening neighbour.output.ppm failed.");
         return;
     }
 
@@ -54,72 +41,121 @@ void writePPM(
     int height = png.ihdr.height;
 
     // P6 header
-    fprintf(outline_black_file, "P6\n%d %d\n255\n", width, height);
-    fprintf(fill_black_file, "P6\n%d %d\n255\n", width, height);
-    fprintf(gaussian_file, "P6\n%d %d\n255\n", width, height);
-
-    Pixel *gaussian_pixels = malloc(pixel_size * sizeof(Pixel));
-    gaussianBlur(pixels, gaussian_pixels, png);
+    fprintf(neighbour_file, "P6\n%d %d\n255\n", width, height);
 
     Pixel *outline_pixels = malloc(pixel_size * sizeof(Pixel));
-    outlineBlack(pixels, outline_pixels, png);
+    outlineBlack(
+        pixels,
+        pixel_size,
 
-    Pixel *fill_pixels = malloc(pixel_size * sizeof(Pixel));
-    fillBlack(pixels, fill_pixels, png);
+        outline_pixels,
+        pixel_size,
 
-    for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-            // write fill file
-            int index = y * width + x;
-            Pixel fbp = fill_pixels[index];
-            fputc(fbp.rgb.r, fill_black_file);
-            fputc(fbp.rgb.g, fill_black_file);
-            fputc(fbp.rgb.b, fill_black_file);
+        png
+    );
 
+    Boundaries boundaries = {0};
+    boundaries.capacity = 16;
+    boundaries.items = malloc(boundaries.capacity * sizeof(Boundary));
+    neighbourChecks(
+        outline_pixels,
+        pixel_size,
 
-            // write outline file
-            Pixel olp = outline_pixels[index];
-            fputc(olp.rgb.r, outline_black_file);
-            fputc(olp.rgb.g, outline_black_file);
-            fputc(olp.rgb.b, outline_black_file);
+        &boundaries,
+        png
+    );
 
-            if(olp.rgb.r != RGB_BLACK || fbp.rgb.r != RGB_BLACK) {
-                fputc(RGB_WHITE, gaussian_file);
-                fputc(RGB_WHITE, gaussian_file);
-                fputc(RGB_WHITE, gaussian_file);   
-                continue;
-            }
+    Pixel *neighbour_pixels = malloc(pixel_size * sizeof(Pixel));
+    for(int i = 0; i < pixel_size; i++) {
+        neighbour_pixels[i].rgb.r = RGB_WHITE;
+        neighbour_pixels[i].rgb.g = RGB_WHITE;
+        neighbour_pixels[i].rgb.b = RGB_WHITE;
+    }
 
-            // write gaussian file
-            Pixel op = pixels[index];
-            float op_total = 0;
-            op_total += op.rgb.r;
-            op_total += op.rgb.g;
-            op_total += op.rgb.b;
-            op_total /= 3;
+    for(int i = 0; i < boundaries.len; i++) {
+        int r = rand() % 255;
+        int g = rand() % 255;
+        int b = rand() % 255;
 
-            Pixel p = gaussian_pixels[index];
-            float p_total = 0;
-            p_total += p.rgb.r;
-            p_total += p.rgb.g;
-            p_total += p.rgb.b;
-            p_total /= 3;
-
-            int sad = abs((int)op_total - (int)p_total);
-
-            fputc(sad, gaussian_file);
-            fputc(sad, gaussian_file);
-            fputc(sad, gaussian_file);
+        for(int j = 0; j < boundaries.items[i].len; j++) {
+            int p = boundaries.items[i].points[j];
+            neighbour_pixels[p].rgb.r = r;
+            neighbour_pixels[p].rgb.g = g;
+            neighbour_pixels[p].rgb.b = b;
         }
     }
 
-    free(gaussian_pixels);
-    free(outline_pixels);
-    free(fill_pixels);
 
-    fclose(outline_black_file);
-    fclose(fill_black_file);
-    fclose(gaussian_file);
+    int vertexes = 1;
+    FILE *obj_file = fopen("out/output.obj", "w");
+    for(size_t i = 0; i < boundaries.len; i++) {
+        Boundary bounady = boundaries.items[i];
+        size_t points_len = bounady.len;
+        DPPoint points[points_len];
+
+        for(size_t j = 0; j < points_len; j++) {
+            int p = bounady.points[j];
+            points[j].x = p % png.ihdr.width;
+            points[j].y = p / png.ihdr.height;
+            points[j].valid = false;
+        }
+
+        douglasPeucker(
+            points,
+            0,
+            points_len - 1,
+            2
+        );
+
+        int valid_points = 0;
+        for(int j = 0; j < points_len; j++) {
+            DPPoint p = points[j];
+            if(!p.valid) continue;
+            valid_points++;
+
+            fprintf(
+                obj_file,
+                "v %f %f 0\n",
+                points[j].x,
+                points[j].y
+            );
+        }
+
+        if(valid_points == 0) continue;
+
+        fprintf(obj_file, "l ");
+        int first = vertexes;
+
+        for (int j = 0; j < valid_points; j++) {
+            fprintf(obj_file, "%d ", vertexes++);
+        }
+
+        fprintf(obj_file, "%d\n", first);
+    }
+    fclose(obj_file);
+
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            int index = y * width + x;
+
+            // write gaussian file
+            Pixel m = neighbour_pixels[index];
+            fputc(m.rgb.r, neighbour_file);
+            fputc(m.rgb.g, neighbour_file);
+            fputc(m.rgb.b, neighbour_file);
+        }
+    }
+
+    for(size_t i = 0; i < boundaries.len; i++) {
+        Boundary boundary = boundaries.items[i];
+        free(boundary.points);
+    }
+    free(boundaries.items);
+
+    free(neighbour_pixels);
+    free(outline_pixels);
+
+    fclose(neighbour_file);
 }
 
 int main(int argc, char *argv[]) {
@@ -134,9 +170,9 @@ int main(int argc, char *argv[]) {
     size_t buffer_size = size + BIT_LENGTH;
     char buffer[buffer_size];
 
-    size_t hex_size = size * 2 + BIT_LENGTH;
+    size_t hex_size = buffer_size * 2 + BIT_LENGTH;
     char hex[hex_size];
-    
+   
     size_t hex_len = getHexDump(
         buffer,
         buffer_size,
@@ -188,8 +224,10 @@ int main(int argc, char *argv[]) {
         idats_size += idat_data_size;
     }
     
+    // - 4 * 4 (because of the first IDAT)
+    size_t binary_size = idats_size * 8 - (4 * 4);
     size_t binary_len = 0;
-    char *binary = malloc(idats_size * 8 * sizeof(char) - (4 * 4)); // - 4 * 4 (because of the first IDAT)
+    char *binary = malloc(binary_size * sizeof(char));
     if(binary == NULL) {
         printf("Allocation failed (binary).\n");
         exit(0);
@@ -198,25 +236,35 @@ int main(int argc, char *argv[]) {
     for(int i = 0; i < idats_amount; i++) {
         size_t idat_data_size = png.idats[i].size * 2;
         if(i == 0) idat_data_size -= 4;
-        char *idat_data = malloc(idat_data_size * 4 * sizeof(char));
-        if(idat_data == NULL) {
+
+        size_t binary_idat_data_size = idat_data_size * 4;
+        char *binary_idat_data = malloc(binary_idat_data_size * sizeof(char));
+        if(binary_idat_data == NULL) {
             printf("Allocation failed (idat).\n");
             exit(0);
         }
-        hexToBinary(png.idats[i].data, idat_data, idat_data_size, true);
+
+        hexToBinary(
+            png.idats[i].data,
+            idat_data_size,
+
+            binary_idat_data,
+            binary_idat_data_size,
+            true
+        );
         
         writeBufferOffset(
-            idat_data,
+            binary_idat_data,
             binary,
             
             0,
-            idat_data_size * 4,
-            
+            binary_idat_data_size,
+
             binary_len // offset
         );
-        binary_len += idat_data_size * 4;
+        binary_len += binary_idat_data_size;
         
-        free(idat_data);
+        free(binary_idat_data);
     }
 
     Huffman huffman = {
@@ -249,19 +297,22 @@ int main(int argc, char *argv[]) {
             break;
     }
 
-    size_t uncompressed_size = png.ihdr.width * png.ihdr.height * size_multiplicator;
+    size_t uncompressed_size = png.ihdr.width * png.ihdr.height * (size_multiplicator + 2);
     int *uncompressed = malloc(uncompressed_size * sizeof(int));
     if(uncompressed == NULL) {
         printf("Allocation failed (uncompressed).\n");
         exit(0);
     }
 
-    size_t uncompressed_len = 0;
+    size_t uncompressed_position = 0;
     getHuffman(
         binary,
         binary_len,
+
         uncompressed,
-        &uncompressed_len,
+        uncompressed_size,
+        &uncompressed_position,
+        
         &huffman
     );
     
@@ -272,17 +323,17 @@ int main(int argc, char *argv[]) {
         exit(0);
     }
 
-    size_t pixels_len = 0;
+    size_t pixels_position = 0;
     getFilter(
         pixels,
-        &pixels_len,
+        &pixels_position,
 
         uncompressed, 
-        uncompressed_len,
+        uncompressed_position,
         &png
     );
 
-    writePPM(pixels, pixels_len, png);
+    writePPM(pixels, pixels_position, png);
 
     free(binary);
     free(uncompressed);
@@ -290,7 +341,7 @@ int main(int argc, char *argv[]) {
     for(int i = 0; i < idats_amount; i++) {
         free(png.idats[i].data);
     }
-
+    
     free(idats);
     free(rgbs);
     return 0;
