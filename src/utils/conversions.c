@@ -43,14 +43,20 @@ void intToBinary(int byte, char *buffer, size_t size) {
     return;
 }
 
-void hexToBinary(char *hex, char *buffer, size_t size, bool lsb) {
-    for(int i = 0; i < size; i++) {
+void hexToBinary(
+    char *hex,
+    size_t hex_size,
+
+    char *buffer,
+    size_t buffer_size,
+    bool lsb
+) {
+    for(int i = 0; i < buffer_size; i++) {
         buffer[i] = '0';
     }
 
     int buffer_index = 0;
     int index = 0;
-    size_t hex_size = strlen(hex);
 
     char hex_storer[8];
     int hex_index = 0;
@@ -141,6 +147,7 @@ int hexToInt(char *hex, size_t size) {
 
 int binaryToInt(char *binary, size_t size, bool lsb) {
     int final = 0;
+    if(size == 0) return final;
 
     char cbinary[size];
     for(int i = 0; i < size; i++) {

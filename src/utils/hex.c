@@ -42,9 +42,8 @@ size_t getHexDump(
         bytes_total += bytes_read;
     }
 
-    buffer[bytes_total] = '\0';
     fclose(file);
-    hexDump(buffer, bytes_total, hex, hex_size);
+    hexDump(buffer, bytes_total - 1, hex, hex_size);
     
     return bytes_total * 2; // return size of hex
 }
@@ -72,7 +71,6 @@ void hexDump(char bytes[], size_t bytes_size, char buffer[], size_t buffer_size)
 
         for(int k = 0; k < (HEX_PRINT_AMOUNT * 2); k++) {
             if((index * (HEX_PRINT_AMOUNT * HEX_PRINT_AMOUNT) + k) > buffer_size) {
-                printf("%ld\n", (index * (HEX_PRINT_AMOUNT * HEX_PRINT_AMOUNT) + k));
                 printf("Issue with the buffer size!\n");
                 return;
             }
