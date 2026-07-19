@@ -36,7 +36,7 @@ int _neigbourCheck(
     int index,
     PNG png
 ) {
-    int len = boundarys_len;
+    size_t len = boundarys_len;
     int width = png.ihdr.width;
 
     int positions[8];
@@ -53,7 +53,7 @@ int _neigbourCheck(
     int similarities = 0;
     for(int i = 0; i < 8; i++) {
         int pos = positions[i];
-        if(pos < 0 || pos >= pixel_size) continue;
+        if(pos < 0 || (size_t)pos >= pixel_size) continue;
 
         Pixel pixel = pixels[pos];
         if(pixel.rgb.r == RGB_WHITE) continue;
@@ -98,7 +98,7 @@ void neighbourChecks(
 
     for (int y = 1; y < height - 1; y++) {
         for (int x = 1; x < width - 1; x++) {
-            int index = y * width + x;
+            size_t index = y * width + x;
             if(index >= pixels_size) {
                 free(visited);
                 return;
@@ -139,7 +139,7 @@ void neighbourChecks(
             b->points = malloc(boundarys_len * sizeof(int));
             memcpy(b->points, boundarys, boundarys_len * sizeof(int));
 
-            for(int i = 0; i < boundarys_len; i++) {
+            for(size_t i = 0; i < boundarys_len; i++) {
                 int pos = boundarys[i];
                 if(visited[pos]) continue;
                 visited[pos] = true;

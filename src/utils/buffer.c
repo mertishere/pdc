@@ -19,8 +19,8 @@ void writeBufferOffset(char src[], char out[], size_t start, size_t end, size_t 
 }
 
 void removeWhitespace(char buffer[], size_t size) {
-    int index = 0;
-    int ws_index = 0;
+    size_t index = 0;
+    size_t ws_index = 0;
     while(index < size) {
         if(buffer[index] == ' ') {
             ws_index = index;
@@ -29,7 +29,7 @@ void removeWhitespace(char buffer[], size_t size) {
                 buffer[ws_index] = '\0';
                 break;
             }
-            for(int j = index; j < size; j++) {
+            for(size_t j = index; j < size; j++) {
                 buffer[ws_index + (j - index)] = buffer[j];
             }
             index = ws_index;

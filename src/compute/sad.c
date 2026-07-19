@@ -29,7 +29,7 @@ void sad(
 
     for (int y = 1; y < height - 1; y++) {
         for (int x = 1; x < width - 1; x++) {
-            int index = y * width + x;
+            size_t index = y * width + x;
             if(index > blurred_size || index > original_size || index >= output_size) return;
 
             Pixel op = original_pixels[index];

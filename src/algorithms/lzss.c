@@ -119,10 +119,10 @@ void handleLzssStatic(
     }
 
 
-    int total_distance = dist_symbol.base + distance_extra_bits;
+    size_t total_distance = dist_symbol.base + distance_extra_bits;
     if (uncompressed_position < total_distance) {
         printf(
-            "1. WARNING TOTAL DISTANCE FAR EXCEEDS CURRENT LENGTH! CL: %ld | TD: %d\n",
+            "1. WARNING TOTAL DISTANCE FAR EXCEEDS CURRENT LENGTH! CL: %ld | TD: %ld\n",
             uncompressed_position,
             total_distance
         );
@@ -131,7 +131,7 @@ void handleLzssStatic(
     }
 
     for (
-        int i = uncompressed_position - total_distance;
+        size_t i = uncompressed_position - total_distance;
         i < uncompressed_position - total_distance + total_copies;
         i++
     ) {
@@ -191,7 +191,7 @@ void handleLzssDynamic(
         }
 
         binary_position += 1;
-        for (int i = 0; i < hdist_huffman_codes_size; i++) {
+        for (size_t i = 0; i < hdist_huffman_codes_size; i++) {
             CodeLengthSymbols hdist_huffman_code = hdist_huffman_codes[i];
             if (cmpInts(
                 hdist_huffman_code.code,
@@ -230,10 +230,10 @@ void handleLzssDynamic(
     int distance_extra_bits = binaryToInt(distance_extra_bits_slice, dist_symbol.extra, true);
     binary_position += dist_symbol.extra;
     
-    int total_distance = dist_symbol.base + distance_extra_bits;
+    size_t total_distance = dist_symbol.base + distance_extra_bits;
     if (uncompressed_position < total_distance) {
         printf(
-            "2. WARNING TOTAL DISTANCE FAR EXCEEDS CURRENT LENGTH! CL: %ld | TD: %d\n",
+            "2. WARNING TOTAL DISTANCE FAR EXCEEDS CURRENT LENGTH! CL: %ld | TD: %ld\n",
             uncompressed_position,
             total_distance
         );
@@ -244,7 +244,7 @@ void handleLzssDynamic(
     size_t start = uncompressed_position - total_distance;
     size_t end = start + total_copies;
 
-    for (int i = start; i < end; i++) {
+    for (size_t i = start; i < end; i++) {
         if(uncompressed_position >= uncompressed_len) {
             printf("too much\n");
             break;

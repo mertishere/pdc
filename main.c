@@ -74,18 +74,18 @@ void writePPM(
     );
 
     Pixel *neighbour_pixels = malloc(pixel_size * sizeof(Pixel));
-    for(int i = 0; i < pixel_size; i++) {
+    for(size_t i = 0; i < pixel_size; i++) {
         neighbour_pixels[i].rgb.r = RGB_WHITE;
         neighbour_pixels[i].rgb.g = RGB_WHITE;
         neighbour_pixels[i].rgb.b = RGB_WHITE;
     }
 
-    for(int i = 0; i < boundaries.len; i++) {
+    for(size_t i = 0; i < boundaries.len; i++) {
         int r = rand() % 255;
         int g = rand() % 255;
         int b = rand() % 255;
 
-        for(int j = 0; j < boundaries.items[i].len; j++) {
+        for(size_t j = 0; j < boundaries.items[i].len; j++) {
             int p = boundaries.items[i].points[j];
             neighbour_pixels[p].rgb.r = r;
             neighbour_pixels[p].rgb.g = g;
@@ -129,7 +129,7 @@ void writePPM(
         );
 
         int valid_points = 0;
-        for(int j = 0; j < points_len; j++) {
+        for(size_t j = 0; j < points_len; j++) {
             DPPoint p = points[j];
             if(!p.valid) continue;
             valid_points++;

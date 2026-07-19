@@ -25,7 +25,7 @@ int powOfInt(int byte) {
 
 // to BINARY
 void intToBinary(int byte, char *buffer, size_t size) {
-    for(int i = 0; i < size; i++) {
+    for(size_t i = 0; i < size; i++) {
         buffer[i] = '0';
     }
 
@@ -51,12 +51,12 @@ void hexToBinary(
     size_t buffer_size,
     bool lsb
 ) {
-    for(int i = 0; i < buffer_size; i++) {
+    for(size_t i = 0; i < buffer_size; i++) {
         buffer[i] = '0';
     }
 
     int buffer_index = 0;
-    int index = 0;
+    size_t index = 0;
 
     char hex_storer[8];
     int hex_index = 0;
@@ -94,7 +94,7 @@ void hexToBinary(
 }
 
 void intToHex(int byte, char *buffer, size_t size) {
-    for(int i = 0; i < size; i++) {
+    for(size_t i = 0; i < size; i++) {
         buffer[i] = '0';
     }
 
@@ -150,7 +150,7 @@ int binaryToInt(char *binary, size_t size, bool lsb) {
     if(size == 0) return final;
 
     char cbinary[size];
-    for(int i = 0; i < size; i++) {
+    for(size_t i = 0; i < size; i++) {
         cbinary[i] = binary[i];
     }
 

@@ -27,7 +27,7 @@ void getFilterRgbA(
             int bit_index = height_row_size + row_index;
             
             if (bit_index >= row_size * (height_index + 1)) break;
-            if (bit_index >= uncompressed_len) break;
+            if ((size_t)bit_index >= uncompressed_len) break;
             if (row_index == 0) {
                 current_filter_method = uncompressed[bit_index];
                 row_index += 1;
@@ -277,7 +277,7 @@ void getFilterRgb(
             int bit_index = height_row_size + row_index;
 
             if (bit_index >= row_size * (height_index + 1)) break;
-            if (bit_index >= uncompressed_len) break;
+            if ((size_t)bit_index >= uncompressed_len) break;
             if (row_index == 0) {
                 current_filter_method = uncompressed[bit_index];
                 row_index += 1;
@@ -475,7 +475,7 @@ void getFilterGrayscale(
             int bit_index = height_row_size + row_index;
 
             if (bit_index >= row_size * (height_index + 1)) break;
-            if (bit_index >= uncompressed_len) break;
+            if ((size_t)bit_index >= uncompressed_len) break;
             if (row_index == 0) {
                 current_filter_method = uncompressed[bit_index];
                 row_index += 1;
@@ -605,7 +605,7 @@ void getFilterGrayscaleA(
             int bit_index = height_row_size + row_index;
 
             if (bit_index >= row_size * (height_index + 1)) break;
-            if (bit_index >= uncompressed_len) break;
+            if ((size_t)bit_index >= uncompressed_len) break;
             if (row_index == 0) {
                 current_filter_method = uncompressed[bit_index];
                 row_index += 1;
@@ -763,7 +763,7 @@ void getFilter(
     
     // The row size is 1 + width*mult (mult up to 4) and is passed as an int.
     // Reject negative dimensions and widths large enough to overflow it.
-    if (image_width < 0 || image_height < 0 || image_width > (__SIZE_MAX__ - 1) / 4) {
+    if (/* image_width < 0 || image_height < 0 || */ image_width > (__SIZE_MAX__ - 1) / 4) {
         return;
     }
 

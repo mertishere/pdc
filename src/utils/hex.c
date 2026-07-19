@@ -8,7 +8,7 @@
 #define HEX_PRINT_AMOUNT 2
 
 void hexReverse(char buffer[], size_t size) {
-    for(int i = 0; i < (size / 2); i++) {
+    for(size_t i = 0; i < (size / 2); i++) {
         char tmp = buffer[i];
         buffer[i] = buffer[i + (size / 2)];
         buffer[i + (size / 2)] = tmp;
@@ -35,7 +35,7 @@ size_t getHexDump(
     while((bytes_read = fread(read_buffer, 1, read_buffer_size - 1, file)) > 0) {
         if(bytes_total + bytes_read > buffer_size) return 0;
 
-        for(int i = 0; i < bytes_read; i++) {
+        for(size_t i = 0; i < bytes_read; i++) {
             buffer[i + bytes_total] = read_buffer[i];
         }
 
@@ -86,6 +86,8 @@ void hexMultiple(char bytes[], size_t bytes_size, char buffer[], size_t buffer_s
     for (size_t i = 0; i < bytes_size; i++) {
         unsigned char byte = (unsigned char)bytes[i];
         intToHex(byte, hex, 2);
+
+        if((i * 2 + 1) > buffer_size) return;
 
         buffer[i * 2] = hex[0];
         buffer[i * 2 + 1] = hex[1];
