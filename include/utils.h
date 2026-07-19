@@ -6,7 +6,13 @@
 #include "png.h"
 
 extern void intToBinary(int byte, char *buffer, size_t size);
-extern void hexToBinary(char *hex, char *buffer, size_t size, bool lsb);
+extern void hexToBinary(
+    char *hex,
+    size_t hex_size,
+    char *buffer,
+    size_t buffer_size,
+    bool lsb
+);
 
 extern void intToHex(int byte, char *buffer, size_t size);
 extern void binaryToHex(char *binary, char *buffer, size_t size);
@@ -29,21 +35,17 @@ extern void writeBufferOffset(char src[], char out[], size_t start, size_t end, 
 extern bool cmpInts(int c1[], int len1, int c2[], int len2);
 extern size_t getFileSize(char *path);
 
-extern float computeBrightness(Pixel p);
-extern void gaussianBlur(
-    Pixel *pixels,
-    Pixel *output,
-    PNG png
-);
-extern void outlineBlack(
-    Pixel *pixels,
-    Pixel *output,
-    PNG png
-);
-extern void fillBlack(
-    Pixel *pixels,
-    Pixel *output,
-    PNG png
+typedef struct {
+    float x;
+    float y;
+    bool valid;
+} DPPoint;
+
+extern void douglasPeucker(
+    DPPoint *points,
+    int start,
+    int end,
+    float epsilon
 );
 
 #endif

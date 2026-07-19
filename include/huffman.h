@@ -24,6 +24,7 @@ extern void getHuffman(
     char binary[],
     size_t binary_len,
     int uncompressed[],
+    size_t uncompressed_len,
     size_t *ul,
     Huffman *huffman
 );

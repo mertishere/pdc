@@ -24,10 +24,10 @@ extern void handleLzssDynamic(
 
     char binary[],
     size_t binary_len,
-    
     size_t *bp,
     
     int uncompressed[],
+    size_t uncompressed_len,
     size_t *up,
     
     CodeLengthSymbols hdist_huffman_codes[],
