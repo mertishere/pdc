@@ -85,18 +85,23 @@ void writePPM(
         }
     }
 
+    Pixel *gaussian_pixels = malloc(pixel_size * sizeof(Pixel));
+    gaussianBlur(pixels, pixel_size, gaussian_pixels, pixel_size, png);
 
     int vertexes = 1;
     FILE *obj_file = fopen("out/output.obj", "w");
     for(size_t i = 0; i < boundaries.len; i++) {
-        Boundary bounady = boundaries.items[i];
-        size_t points_len = bounady.len;
+        Boundary boundary = boundaries.items[i];
+        size_t points_len = boundary.len;
         DPPoint points[points_len];
 
         for(size_t j = 0; j < points_len; j++) {
-            int p = bounady.points[j];
+            int p = boundary.points[j];
+            Pixel gp = gaussian_pixels[p];
+            
             points[j].x = p % png.ihdr.width;
             points[j].y = p / png.ihdr.height;
+            points[j].z = gp.rgb.r * 100.0f / 255.0f;
             points[j].valid = false;
         }
 
@@ -104,7 +109,7 @@ void writePPM(
             points,
             0,
             points_len - 1,
-            2
+            5
         );
 
         int valid_points = 0;
@@ -115,9 +120,10 @@ void writePPM(
 
             fprintf(
                 obj_file,
-                "v %f %f 0\n",
+                "v %f %f %f\n",
                 points[j].x,
-                points[j].y
+                points[j].y,
+                points[j].z
             );
         }
 
@@ -154,6 +160,7 @@ void writePPM(
 
     free(neighbour_pixels);
     free(outline_pixels);
+    free(gaussian_pixels);
 
     fclose(neighbour_file);
 }
