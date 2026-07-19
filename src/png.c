@@ -240,7 +240,7 @@ void getIdat(
     png->idats[idat_index].data = NULL;
 
     if((hex_position + BYTE_LENGTH) > hex_size) return;
-    
+
     char idat_size_slice[BYTE_LENGTH];
     writeBuffer(hex, idat_size_slice, hex_position, hex_position + BYTE_LENGTH);
     hex_position += BYTE_LENGTH;
@@ -279,7 +279,6 @@ void getIdat(
         );
 
         hex_position += (idat_size * 2); // crc
-
         if((hex_position + BYTE_LENGTH * 4) > hex_size) return;
 
         char iend_header[BYTE_LENGTH + 1];
@@ -657,32 +656,73 @@ void getPng(
         return;
     }
 
-    char iend_signature[BYTE_LENGTH + 1];
+    char next_signature[BYTE_LENGTH + 1];
     writeBuffer(
         hex, 
-        iend_signature, 
+        next_signature, 
         hex_position + BYTE_LENGTH, 
         hex_position + BYTE_LENGTH * 2
     );
 
-    iend_signature[BYTE_LENGTH] = '\0';
+    next_signature[BYTE_LENGTH] = '\0';
     int idat_index = 0;
 
-    while(strcmp(iend_signature, IEND_SIG) != 0) {
-        getIdat(png, hex, hex_size, &hex_position, idat_index);
-        idat_index++;
-
-        if((hex_position + BYTE_LENGTH * 2) > hex_size) {
-            return;
+    while(strcmp(next_signature, IEND_SIG) != 0) {
+        if(hex_position >= hex_size) {
+            printf("EXCEEDING HEX SIZE\n");
+            exit(EXIT_FAILURE);
         }
+
+        // if it is not the IDAT header
+        if(strcmp(next_signature, IDAT_SIG) != 0) {
+            char chunk[BYTE_LENGTH * 10 + BIT_LENGTH];
+            writeBuffer(
+                hex,
+                chunk,
+                hex_position,
+                hex_position + BYTE_LENGTH * 10
+            );
+
+            // skipping other incoming chunks
+            // eg. eXIf
+            char chunk_size_slice[BYTE_LENGTH + BIT_LENGTH];
+            writeBuffer(
+                hex,
+                chunk_size_slice,
+                hex_position,
+                hex_position + BYTE_LENGTH
+            );
+            hex_position += BYTE_LENGTH * 2; // size and chunk name
+
+            int chunk_size = hexToInt(chunk_size_slice, BYTE_LENGTH);
+
+            hex_position += chunk_size * 2;
+            hex_position += BYTE_LENGTH; // crc
+
+            writeBuffer(
+                hex,
+                next_signature,
+                hex_position + BYTE_LENGTH,
+                hex_position + BYTE_LENGTH * 2
+            );
+            next_signature[BYTE_LENGTH] = '\0';
+            if(strcmp(next_signature, IEND_SIG) == 0) break;
+
+            continue;
+        } else {
+            getIdat(png, hex, hex_size, &hex_position, idat_index);
+            idat_index++;
+        }    
+
+        if((hex_position + BYTE_LENGTH * 2) > hex_size) return;
 
         writeBuffer(
             hex,
-            iend_signature,
+            next_signature,
             hex_position + BYTE_LENGTH,
             hex_position + BYTE_LENGTH * 2
         );
-        iend_signature[BYTE_LENGTH] = '\0';
+        next_signature[BYTE_LENGTH] = '\0';
     }
 
     getIend(
