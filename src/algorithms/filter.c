@@ -295,7 +295,7 @@ void getFilterRgb(
                 pixels[pixels_position].rgb.a = 255;
 
                 pixels[pixels_position].col = height_index;
-                pixels[pixels_position].row = (row_index - 1) / 4;
+                pixels[pixels_position].row = (row_index - 1) / 3;
                 pixels_position++;
 
                 row_index += 3;
@@ -321,7 +321,7 @@ void getFilterRgb(
                 final_g_bit = (final_g_bit + previous_g_bit) % 256;
                 final_b_bit = (final_b_bit + previous_b_bit) % 256;
             } else if (current_filter_method == 2) {
-                int row_move_up = height_row_size;
+                int row_move_up = row_size;
                 int top_r_bit = 0;
                 int top_g_bit = 0;
                 int top_b_bit = 0;
@@ -346,7 +346,7 @@ void getFilterRgb(
                     previous_b_bit = uncompressed[bit_index - 1];
                 }
 
-                int row_move_up = height_row_size;
+                int row_move_up = row_size;
                 int top_r_bit = 0;
                 int top_g_bit = 0;
                 int top_b_bit = 0;
@@ -371,7 +371,7 @@ void getFilterRgb(
                     previous_b_bit = uncompressed[bit_index - 1];
                 }
 
-                int row_move_up = height_row_size;
+                int row_move_up = row_size;
                 int top_r_bit = 0;
                 int top_g_bit = 0;
                 int top_b_bit = 0;
@@ -387,46 +387,58 @@ void getFilterRgb(
                 int top_left_b_bit = 0;
 
                 if (height_index > 0 && row_index >= 4) {
-                    top_left_r_bit = uncompressed[bit_index - row_move_up - 1];
-                    top_left_g_bit = uncompressed[bit_index + 1 - row_move_up - 1];
-                    top_left_b_bit = uncompressed[bit_index + 2 - row_move_up - 1];
+                    top_left_r_bit = uncompressed[bit_index - row_move_up - 3];
+                    top_left_g_bit = uncompressed[bit_index - row_move_up - 2];
+                    top_left_b_bit = uncompressed[bit_index - row_move_up - 1];
                 }
 
-                int r_bit_P = previous_r_bit + top_r_bit - top_left_r_bit;
-                int r_bit_A = abs(r_bit_P - previous_r_bit);
-                int r_bit_B = abs(r_bit_P - top_r_bit);
-                int r_bit_C = abs(r_bit_P - top_left_r_bit);
-                if (r_bit_A <= r_bit_B && r_bit_A <= r_bit_C) {
-                    final_r_bit = (final_r_bit + r_bit_A) % 256;
-                } else if (r_bit_B <= r_bit_C) {
-                    final_r_bit = (final_r_bit + r_bit_B) % 256;
+                int r_predictor;
+                int r_bit_p = previous_r_bit + top_r_bit - top_left_r_bit;
+                int r_bit_a = abs(r_bit_p - previous_r_bit);
+                int r_bit_b = abs(r_bit_p - top_r_bit);
+                int r_bit_c = abs(r_bit_p - top_left_r_bit);
+
+                if (r_bit_a <= r_bit_b && r_bit_a <= r_bit_c) {
+                    r_predictor = previous_r_bit;
+                } else if (r_bit_b <= r_bit_c) {
+                    r_predictor = top_r_bit;
                 } else {
-                    final_r_bit = (final_r_bit + r_bit_C) % 256;
+                    r_predictor = top_left_r_bit;
                 }
 
-                int g_bit_P = previous_g_bit + top_g_bit - top_left_g_bit;
-                int g_bit_A = abs(g_bit_P - previous_g_bit);
-                int g_bit_B = abs(g_bit_P - top_g_bit);
-                int g_bit_C = abs(g_bit_P - top_left_g_bit);
-                if (g_bit_A <= g_bit_B && g_bit_A <= g_bit_C) {
-                    final_g_bit = (final_g_bit + g_bit_A) % 256;
-                } else if (g_bit_B <= g_bit_C) {
-                    final_g_bit = (final_g_bit + g_bit_B) % 256;
+                final_r_bit = (final_r_bit + r_predictor) % 256;
+
+                int g_predictor;
+                int g_bit_p = previous_g_bit + top_g_bit - top_left_g_bit;
+                int g_bit_a = abs(g_bit_p - previous_g_bit);
+                int g_bit_b = abs(g_bit_p - top_g_bit);
+                int g_bit_c = abs(g_bit_p - top_left_g_bit);
+
+                if (g_bit_a <= g_bit_b && g_bit_a <= g_bit_c) {
+                    g_predictor = previous_g_bit;
+                } else if (g_bit_b <= g_bit_c) {
+                    g_predictor = top_g_bit;
                 } else {
-                    final_g_bit = (final_g_bit + g_bit_C) % 256;
+                    g_predictor = top_left_g_bit;
                 }
 
-                int b_bit_P = previous_b_bit + top_b_bit - top_left_b_bit;
-                int b_bit_A = abs(b_bit_P - previous_b_bit);
-                int b_bit_B = abs(b_bit_P - top_b_bit);
-                int b_bit_C = abs(b_bit_P - top_left_b_bit);
-                if (b_bit_A <= b_bit_B && b_bit_A <= b_bit_C) {
-                    final_b_bit = (final_b_bit + b_bit_A) % 256;
-                } else if (b_bit_B <= b_bit_C) {
-                    final_b_bit = (final_b_bit + b_bit_B) % 256;
+                final_g_bit = (final_g_bit + g_predictor) % 256;
+
+                int b_predictor;
+                int b_bit_p = previous_b_bit + top_b_bit - top_left_b_bit;
+                int b_bit_a = abs(b_bit_p - previous_b_bit);
+                int b_bit_b = abs(b_bit_p - top_b_bit);
+                int b_bit_c = abs(b_bit_p - top_left_b_bit);
+
+                if (b_bit_a <= b_bit_b && b_bit_a <= b_bit_c) {
+                    b_predictor = previous_b_bit;
+                } else if (b_bit_b <= b_bit_c) {
+                    b_predictor = top_b_bit;
                 } else {
-                    final_b_bit = (final_b_bit + b_bit_C) % 256;
+                    b_predictor = top_left_b_bit;
                 }
+
+                final_b_bit = (final_b_bit + b_predictor) % 256;
             }
 
             int r_bit = final_r_bit;
@@ -598,7 +610,7 @@ void getFilterGrayscaleA(
 
     int current_filter_method = 0;
     int height_index = 0;
-    for (int i = 0; i <image_height; i++) {
+    for (int i = 0; i < image_height; i++) {
         int row_index = 0;
         while (true) {
             int height_row_size = height_index * row_size;
