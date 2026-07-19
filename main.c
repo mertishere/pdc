@@ -30,6 +30,13 @@ void writePPM(
         closedir(dp);
     }
 
+    const char *normal = "out/normal.output.ppm";
+    FILE *normal_file = fopen(normal, "wb");
+    if (!normal_file) {
+        printf("Opening normal.output.ppm failed.");
+        return;
+    }
+
     const char *neighbour = "out/neighbour.output.ppm";
     FILE *neighbour_file = fopen(neighbour, "wb");
     if (!neighbour_file) {
@@ -48,8 +55,16 @@ void writePPM(
     int height = png.ihdr.height;
 
     // P6 header
+    fprintf(normal_file, "P6\n%d %d\n255\n", width, height);
     fprintf(neighbour_file, "P6\n%d %d\n255\n", width, height);
     fprintf(gaussian_file, "P6\n%d %d\n255\n", width, height);
+
+    for(size_t i = 0; i < pixel_size; i++) {
+        Pixel pixel = pixels[i];
+        fputc(pixel.rgb.r, normal_file);
+        fputc(pixel.rgb.g, normal_file);
+        fputc(pixel.rgb.b, normal_file);
+    }
 
     Pixel *outline_pixels = malloc(pixel_size * sizeof(Pixel));
     outlineBlack(
