@@ -77,8 +77,6 @@ void hexDump(char buffer[], size_t buffer_size, char hex[], size_t hex_size) {
 
         index++;
     }
-
-    printf("last index %ld\n", index * (HEX_PRINT_AMOUNT * HEX_PRINT_AMOUNT));
 }
 
 void hexMultiple(char buffer[], size_t buffer_size, char hex[], size_t hex_size) {
