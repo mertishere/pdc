@@ -26,8 +26,8 @@ extern void removeWhitespace(char buffer[], size_t size);
 extern void reverseString(char buffer[], size_t size);
 
 extern size_t getHexDump(char buffer[], size_t buffer_size, char hex[], size_t hex_size, char *file_path);
-extern void hexMultiple(char bytes[], size_t bytes_size, char buffer[], size_t buffer_size);
-extern void hexDump(char bytes[], size_t bytes_size, char buffer[], size_t buffer_size);
+extern void hexMultiple(char buffer[], size_t buffer_size, char hex[], size_t hex_size);
+extern void hexDump(char buffer[], size_t buffer_size, char hex[], size_t hex_size);
 
 extern void writeBuffer(char src[], char out[], size_t start, size_t end);
 extern void writeBufferOffset(char src[], char out[], size_t start, size_t end, size_t offset);

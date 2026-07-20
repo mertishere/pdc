@@ -48,48 +48,48 @@ size_t getHexDump(
     return bytes_total * 2; // return size of hex
 }
 
-void hexDump(char bytes[], size_t bytes_size, char buffer[], size_t buffer_size) {
-    char str[HEX_PRINT_AMOUNT];
-    char hex[HEX_PRINT_AMOUNT * 2];
+void hexDump(char buffer[], size_t buffer_size, char hex[], size_t hex_size) {
+    char str_storer[HEX_PRINT_AMOUNT];
+    char hex_storer[HEX_PRINT_AMOUNT * 2];
 
     size_t index = 0;
-    while (index < bytes_size) {
-        if(index * HEX_PRINT_AMOUNT > bytes_size) break;
+    while (index < buffer_size) {
+        if(index * HEX_PRINT_AMOUNT > buffer_size) break;
 
         for(int j = 0; j < HEX_PRINT_AMOUNT; j++) {
-            if(index * HEX_PRINT_AMOUNT + j > bytes_size) break;
+            if(index * HEX_PRINT_AMOUNT + j > buffer_size) break;
 
-            str[j] = bytes[index * HEX_PRINT_AMOUNT + j];
+            str_storer[j] = buffer[index * HEX_PRINT_AMOUNT + j];
         }
 
         hexMultiple(
-            str,
+            str_storer,
             HEX_PRINT_AMOUNT,
-            hex,
+            hex_storer,
             HEX_PRINT_AMOUNT * 2
         );
 
         for(int k = 0; k < (HEX_PRINT_AMOUNT * 2); k++) {
-            if((index * (HEX_PRINT_AMOUNT * HEX_PRINT_AMOUNT) + k) > buffer_size) {
-                printf("Issue with the buffer size!\n");
-                return;
-            }
-            buffer[index * (HEX_PRINT_AMOUNT * HEX_PRINT_AMOUNT) + k] = hex[k];
+            size_t i = index * (HEX_PRINT_AMOUNT * HEX_PRINT_AMOUNT) + k;
+            if(i >= hex_size) return;
+            hex[i] = hex_storer[k];
         }
 
         index++;
     }
+
+    printf("last index %ld\n", index * (HEX_PRINT_AMOUNT * HEX_PRINT_AMOUNT));
 }
 
-void hexMultiple(char bytes[], size_t bytes_size, char buffer[], size_t buffer_size) {
-    char hex[2];
-    for (size_t i = 0; i < bytes_size; i++) {
-        unsigned char byte = (unsigned char)bytes[i];
-        intToHex(byte, hex, 2);
+void hexMultiple(char buffer[], size_t buffer_size, char hex[], size_t hex_size) {
+    char hex_storer[2];
+    for (size_t i = 0; i < buffer_size; i++) {
+        unsigned char byte = (unsigned char)buffer[i];
+        intToHex(byte, hex_storer, 2);
 
-        if((i * 2 + 1) > buffer_size) return;
+        if((i * 2 + 1) > hex_size) return;
 
-        buffer[i * 2] = hex[0];
-        buffer[i * 2 + 1] = hex[1];
+        hex[i * 2] = hex_storer[0];
+        hex[i * 2 + 1] = hex_storer[1];
     }
 }
