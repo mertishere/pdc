@@ -60,10 +60,10 @@ The long-term goal is to produce 3D meshes directly from image data without rely
 ## Roadmap
 
 - [ ] Parse ancillary PNG chunks
-- [ ] Support additional PNG color types
+- [x] Support additional PNG color types
 - [ ] Improve memory efficiency
-- [ ] Improve allocation strategy
-- [ ] Strengthen error handling
+- [x] Improve allocation strategy
+- [x] Strengthen error handling
 - [ ] Image feature extraction
 - [ ] Height map generation
 - [ ] Mesh generation
