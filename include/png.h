@@ -40,10 +40,17 @@ typedef struct {
 } IEND;
 
 typedef struct {
+    char signature[9]; // 8 bytes and 1 NULL byte
+    size_t size;
+    char *data; // the data for each ancillary chunk needs to be handled independently
+} ANCI;
+
+typedef struct {
     IHDR ihdr;
     IEND iend;
     PLTE plte;
     IDAT *idats;
+    ANCI *ancillaries;
 } PNG;
 
 typedef struct {
@@ -57,6 +64,7 @@ typedef struct {
     Pixel *pixels;
 } Decompressed;
 
+extern int countAncillaries(char hex[], size_t hex_size);
 extern int countIdats(char hex[], size_t hex_size);
 extern int countRgbs(char hex[], size_t hex_size);
 

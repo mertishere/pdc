@@ -167,24 +167,26 @@ void getPlte(
 }
 
 void getAncillary(
-    // PNG *png,
+    PNG *png,
     char hex[],
     size_t hex_size,
-    size_t *hp
+    size_t *hp,
+    size_t *ap
 ) {
     size_t hex_position = *hp;
+    size_t ancillary_position = *ap;
 
-    char idat_header[BYTE_LENGTH + 1];
+    char header[BYTE_LENGTH + 1];
     writeBuffer(
         hex, 
-        idat_header, 
+        header, 
         hex_position + BYTE_LENGTH,
         hex_position + BYTE_LENGTH * 2
     );
     
-    idat_header[BYTE_LENGTH] = '\0';
+    header[BYTE_LENGTH] = '\0';
 
-    while (strcmp(idat_header, IDAT_SIG) != 0 && hex_position < hex_size) {
+    while (strcmp(header, IDAT_SIG) != 0 && strcmp(header, PLTE_SIG) != 0 && hex_position < hex_size) {
         if((hex_position + BYTE_LENGTH) > hex_size) return;
 
         char ancillary_header_size_slice[BYTE_LENGTH];
@@ -201,29 +203,35 @@ void getAncillary(
         hex_position += BYTE_LENGTH;
         ancillary_header_slice[BYTE_LENGTH] = '\0';
 
-        // printf("ancillary header: %s\n", ancillary_header_slice);
+        strcpy(png->ancillaries[ancillary_position].signature, ancillary_header_slice);
+        png->ancillaries[ancillary_position].size = ancillary_header_size;
 
-        // const ancillary_header_data = hex[hex_position .. hex_position + 2 * ancillary_header_size];
-        // _ = ancillary_header_data;
-        hex_position += 2 * ancillary_header_size;
+        png->ancillaries[ancillary_position].data = malloc(ancillary_header_size * 2 * sizeof(char));
+        writeBuffer(
+            hex,
+            png->ancillaries[ancillary_position].data,
+            hex_position,
+            hex_position + ancillary_header_size * 2
+        );
 
-        // const ancillary_header_crc = hex[hex_position .. hex_position + BYTE_LENGTH];
-        // _ = ancillary_header_crc;
-        hex_position += BYTE_LENGTH;
+        hex_position += ancillary_header_size * 2;
+        hex_position += BYTE_LENGTH; // crc
 
         if((hex_position + BYTE_LENGTH * 2) > hex_size) return;
 
         writeBuffer(
             hex, 
-            idat_header, 
+            header, 
             hex_position + BYTE_LENGTH,
             hex_position + BYTE_LENGTH * 2
         );
         
-        idat_header[BYTE_LENGTH] = '\0';
+        header[BYTE_LENGTH] = '\0';
+        ancillary_position++;
     }
 
     *hp = hex_position;
+    *ap = ancillary_position;
 }
 
 void getIdat(
@@ -544,6 +552,90 @@ int countIdats(
     return c;
 }
 
+int countAncillaries(
+    char hex[],
+    size_t hex_size
+) {
+    int c = 0; // *counter;
+
+    size_t hex_position = 0;
+
+    // skip PNG header
+    hex_position += BYTE_LENGTH * 2;
+
+    if((hex_position + BYTE_LENGTH) > hex_size) {
+        return c;
+    }
+
+    char size[BYTE_LENGTH + 1];
+    writeBuffer(
+        hex, 
+        size, 
+        hex_position,
+        hex_position + BYTE_LENGTH
+    );
+    size[BYTE_LENGTH] = '\0';
+    hex_position += BYTE_LENGTH;
+
+    if((hex_position + BYTE_LENGTH) > hex_size) {
+        return c;
+    }
+
+    char header[BYTE_LENGTH + 1];
+    writeBuffer(
+        hex, 
+        header, 
+        hex_position,
+        hex_position + BYTE_LENGTH
+    );
+    header[BYTE_LENGTH] = '\0';
+    hex_position += BYTE_LENGTH;
+
+    while(strcmp(header, IEND_SIG) != 0) {
+        bool not_idat = strcmp(header, IDAT_SIG) != 0;
+        bool not_iend = strcmp(header, IEND_SIG) != 0;
+        bool not_plte = strcmp(header, PLTE_SIG) != 0;
+        bool not_ihdr = strcmp(header, IHDR_SIG) != 0;
+        if(not_plte & not_ihdr & not_idat & not_iend) c++;
+
+        int chunk_size = hexToInt(size, BYTE_LENGTH);
+
+        // A negative (i.e. >= 2^31, malformed) length would wrap when cast to
+        // size_t and could leave hex_position un-advanced, spinning this loop.
+        if (chunk_size < 0) break;    
+        hex_position += (size_t)chunk_size * 2;
+        hex_position += BYTE_LENGTH; // crc
+
+        if((hex_position + BYTE_LENGTH) > hex_size) {
+            return c;
+        }
+
+        writeBuffer(
+            hex, 
+            size, 
+            hex_position,
+            hex_position + BYTE_LENGTH
+        );
+        size[BYTE_LENGTH] = '\0';
+        hex_position += BYTE_LENGTH;
+
+        if((hex_position + BYTE_LENGTH) > hex_size) {
+            return c;
+        }
+
+        writeBuffer(
+            hex, 
+            header, 
+            hex_position, 
+            hex_position + BYTE_LENGTH
+        );
+        header[BYTE_LENGTH] = '\0';
+        hex_position += BYTE_LENGTH;
+    }
+
+    return c;
+}
+
 int countRgbs(
     char hex[],
     size_t hex_size
@@ -633,9 +725,7 @@ void getPng(
 )  {
     size_t hex_position = 0;
 
-    if((hex_position + BYTE_LENGTH * 2) > hex_size) {
-        return;
-    }
+    if((hex_position + BYTE_LENGTH * 2) > hex_size) return;
 
     char png_signature[BYTE_LENGTH * 2 + 1];
     writeBuffer(hex, png_signature, hex_position, hex_position + BYTE_LENGTH * 2);
@@ -648,13 +738,14 @@ void getPng(
         return;
     }
 
+    size_t ancillary_position = 0;
     getIhdr(png, hex, hex_size, &hex_position);
+    getAncillary(png, hex, hex_size, &hex_position, &ancillary_position);
+    
     getPlte(png, hex, hex_size, &hex_position);
-    getAncillary(/* png, */ hex, hex_size, &hex_position);
+    getAncillary(png, hex, hex_size, &hex_position, &ancillary_position);
 
-    if((hex_position + BYTE_LENGTH * 2) > hex_size) {
-        return;
-    }
+    if((hex_position + BYTE_LENGTH * 2) > hex_size) return;
 
     char next_signature[BYTE_LENGTH + 1];
     writeBuffer(

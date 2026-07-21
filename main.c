@@ -7,8 +7,7 @@
 #include <sys/stat.h>
 
 #include "png.h"
-#include "huffman.h"
-#include "filter.h"
+#include "algorithms.h"
 #include "utils.h"
 #include "constants.h"
 #include "compute.h"
@@ -228,6 +227,14 @@ int main(int argc, char *argv[]) {
         path
     );
 
+    int ancillaries_amount = countAncillaries(hex, hex_len);
+    ANCI *ancillaries = malloc(ancillaries_amount * sizeof(ANCI));
+    if(ancillaries == NULL) {
+        printf("Allocation failed (ancillaries).\n");
+        exit(0);
+    }
+
+
     int idats_amount = countIdats(hex, hex_len);
     IDAT *idats = malloc(idats_amount * sizeof(IDAT));
     if(idats == NULL) {
@@ -244,6 +251,7 @@ int main(int argc, char *argv[]) {
 
     PNG png = {
         .idats = idats,
+        .ancillaries = ancillaries,
         .iend = {
             .size = 0
         },
@@ -262,8 +270,11 @@ int main(int argc, char *argv[]) {
             .size = 0,
         }
     };
-    
+
     getPng(&png, hex, hex_len);
+
+    handleAncillaries(png, ancillaries_amount);
+
     size_t idats_size = 0;
     for(int i = 0; i < idats_amount; i++) {
         size_t idat_data_size = png.idats[i].size;
@@ -389,8 +400,12 @@ int main(int argc, char *argv[]) {
     for(int i = 0; i < idats_amount; i++) {
         free(png.idats[i].data);
     }
-    
     free(idats);
     free(rgbs);
+    for(int i = 0; i < ancillaries_amount; i++) {
+        free(png.ancillaries[i].data);
+    }
+    free(ancillaries);
+
     return 0;
 }
