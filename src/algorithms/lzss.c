@@ -5,8 +5,7 @@
 
 #include "utils.h"
 #include "constants.h"
-#include "lzss.h"
-#include "huffman.h"
+#include "algorithms.h"
 
 void setDist(int symbol, Symbol *dist) {
     if (symbol < 0 || symbol >= 30) return;

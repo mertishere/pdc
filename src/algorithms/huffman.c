@@ -4,10 +4,9 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include "lzss.h"
+#include "algorithms.h"
 #include "constants.h"
 #include "utils.h"
-#include "huffman.h"
 
 #define HCLEN_SIZE 19
 // #define BIT_LENGTH 1
