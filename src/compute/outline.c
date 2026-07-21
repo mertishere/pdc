@@ -7,8 +7,7 @@
 #include <sys/stat.h>
 
 #include "png.h"
-#include "huffman.h"
-#include "filter.h"
+#include "algorithms.h"
 #include "constants.h"
 #include "utils.h"
 
