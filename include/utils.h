@@ -49,4 +49,6 @@ extern void douglasPeucker(
     float epsilon
 );
 
+extern void writePPM(PNG png);
+
 #endif

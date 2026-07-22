@@ -2,6 +2,7 @@
 #define PNG_H
 
 #include "stddef.h"
+#include "stddef.h"
 
 typedef struct {
     int r;
@@ -46,12 +47,16 @@ typedef struct {
 } ANCI;
 
 typedef struct {
-    IHDR ihdr;
-    IEND iend;
-    PLTE plte;
-    IDAT *idats;
-    ANCI *ancillaries;
-} PNG;
+    char *data;
+    size_t size;
+    size_t cursor;
+} Data;
+
+typedef struct {
+    int *data;
+    size_t size;
+    size_t cursor;
+} DataInt;
 
 typedef struct {
     RGB rgb;
@@ -60,14 +65,35 @@ typedef struct {
 } Pixel;
 
 typedef struct {
-    PNG png;
-    Pixel *pixels;
-} Decompressed;
+    Pixel *data;
+    size_t size;
+    size_t cursor;
+} DataPixel;
+
+typedef struct {
+    char *path; // path of the PNG
+    size_t size; // size of PNG file
+    Data buffer; // the buffer to handle the PNG
+    Data hex; // the hex buffer to handle the PNG
+    Data binary; // the binary version of the buffer to handle the PNG
+    DataInt raw; // the raw version of the buffer to handle the PNG
+    DataPixel pixels; // the pixels of the PNG
+
+    int idats_amount;
+    int rgbs_amount;
+    int ancillaries_amount;
+
+    IHDR ihdr;
+    IEND iend;
+    PLTE plte;
+    IDAT *idats;
+    ANCI *ancillaries;
+} PNG;
 
 extern int countAncillaries(char hex[], size_t hex_size);
 extern int countIdats(char hex[], size_t hex_size);
 extern int countRgbs(char hex[], size_t hex_size);
 
-extern void getPng(PNG *png, char hex[], size_t hex_size);
-
+extern PNG parsePng(char *path);
+extern void freePng(PNG png);
 #endif

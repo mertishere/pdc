@@ -5,6 +5,7 @@
 #include "png.h"
 #include "utils.h"
 #include "constants.h"
+#include "algorithms.h"
 
 #define BIT_LENGTH 1
 #define BYTE_LENGTH 8
@@ -186,7 +187,18 @@ void getAncillary(
     
     header[BYTE_LENGTH] = '\0';
 
-    while (strcmp(header, IDAT_SIG) != 0 && strcmp(header, PLTE_SIG) != 0 && hex_position < hex_size) {
+    while (
+        strcmp(header, IDAT_SIG) != 0 
+        && 
+        strcmp(header, PLTE_SIG) != 0 
+        && 
+        strcmp(header, IEND_SIG) != 0 
+        && 
+        strcmp(header, IHDR_SIG) != 0 
+        && 
+        hex_position < hex_size
+    ) 
+    {
         if((hex_position + BYTE_LENGTH) > hex_size) return;
 
         char ancillary_header_size_slice[BYTE_LENGTH];
@@ -758,52 +770,14 @@ void getPng(
     next_signature[BYTE_LENGTH] = '\0';
     int idat_index = 0;
 
-    while(strcmp(next_signature, IEND_SIG) != 0) {
+    while(strcmp(next_signature, IDAT_SIG) == 0) {
         if(hex_position >= hex_size) {
             printf("EXCEEDING HEX SIZE\n");
             exit(EXIT_FAILURE);
         }
 
-        // if it is not the IDAT header
-        if(strcmp(next_signature, IDAT_SIG) != 0) {
-            char chunk[BYTE_LENGTH * 10 + BIT_LENGTH];
-            writeBuffer(
-                hex,
-                chunk,
-                hex_position,
-                hex_position + BYTE_LENGTH * 10
-            );
-
-            // skipping other incoming chunks
-            // eg. eXIf
-            char chunk_size_slice[BYTE_LENGTH + BIT_LENGTH];
-            writeBuffer(
-                hex,
-                chunk_size_slice,
-                hex_position,
-                hex_position + BYTE_LENGTH
-            );
-            hex_position += BYTE_LENGTH * 2; // size and chunk name
-
-            int chunk_size = hexToInt(chunk_size_slice, BYTE_LENGTH);
-
-            hex_position += chunk_size * 2;
-            hex_position += BYTE_LENGTH; // crc
-
-            writeBuffer(
-                hex,
-                next_signature,
-                hex_position + BYTE_LENGTH,
-                hex_position + BYTE_LENGTH * 2
-            );
-            next_signature[BYTE_LENGTH] = '\0';
-            if(strcmp(next_signature, IEND_SIG) == 0) break;
-
-            continue;
-        } else {
-            getIdat(png, hex, hex_size, &hex_position, idat_index);
-            idat_index++;
-        }    
+        getIdat(png, hex, hex_size, &hex_position, idat_index);
+        idat_index++;
 
         if((hex_position + BYTE_LENGTH * 2) > hex_size) return;
 
@@ -816,6 +790,7 @@ void getPng(
         next_signature[BYTE_LENGTH] = '\0';
     }
 
+    getAncillary(png, hex, hex_size, &hex_position, &ancillary_position);
     getIend(
         png,
         hex,
@@ -823,3 +798,185 @@ void getPng(
         &hex_position
     );
 }
+
+PNG parsePng(char *path) {
+    PNG png = {};
+    size_t size = getFileSize(path);
+
+    png.path = path;
+    png.size = size;
+
+    png.buffer.size = png.size + BIT_LENGTH;
+    png.buffer.data = malloc(png.buffer.size * sizeof(char));
+
+    png.hex.size = png.size * 2 + BIT_LENGTH;
+    png.hex.data = malloc(png.hex.size * sizeof(char));
+
+    size_t hex_len = getHexDump(
+        png.buffer.data,
+        png.buffer.size,
+
+        png.hex.data,
+        png.hex.size,
+        path
+    );
+
+    png.hex.size = hex_len;
+
+    png.ancillaries_amount = countAncillaries(png.hex.data, png.hex.size);
+    png.ancillaries = malloc(png.ancillaries_amount * sizeof(ANCI));
+    if(png.ancillaries == NULL) {
+        printf("Allocation failed (ancillaries).\n");
+        exit(0);
+    }
+
+    png.idats_amount = countIdats(png.hex.data, png.hex.size);
+    png.idats = malloc(png.idats_amount * sizeof(IDAT));
+    if(png.idats == NULL) {
+        printf("Allocation failed (idats).\n");
+        exit(0);
+    }
+
+    png.rgbs_amount = countRgbs(png.hex.data, png.hex.size);
+    png.plte.rgbs = malloc(png.rgbs_amount * sizeof(RGB));
+    if(png.plte.rgbs == NULL) {
+        printf("Allocation failed (rgbs).\n");
+        exit(0);
+    }
+
+    getPng(&png, png.hex.data, png.hex.size);
+
+    size_t idats_size = 0;
+    for(int i = 0; i < png.idats_amount; i++) {
+        size_t idat_data_size = png.idats[i].size;
+        idats_size += idat_data_size;
+    }
+
+    // - 4 * 4 (because of the first IDAT)
+    png.binary.size = idats_size * 8 - (4 * 4);
+    png.binary.cursor = 0;
+    png.binary.data = malloc(png.binary.size * sizeof(char));
+    if(png.binary.data == NULL) {
+        printf("Allocation failed (binary).\n");
+        exit(0);
+    }
+
+    for(int i = 0; i < png.idats_amount; i++) {
+        size_t idat_data_size = png.idats[i].size * 2;
+        if(i == 0) idat_data_size -= 4;
+
+        size_t binary_idat_data_size = idat_data_size * 4;
+        char *binary_idat_data = malloc(binary_idat_data_size * sizeof(char));
+        if(binary_idat_data == NULL) {
+            printf("Allocation failed (idat).\n");
+            exit(0);
+        }
+
+        hexToBinary(
+            png.idats[i].data,
+            idat_data_size,
+
+            binary_idat_data,
+            binary_idat_data_size,
+            true
+        );
+        
+        writeBufferOffset(
+            binary_idat_data,
+            png.binary.data,
+            
+            0,
+            binary_idat_data_size,
+
+            png.binary.cursor // offset
+        );
+        png.binary.cursor += binary_idat_data_size;
+        
+        free(binary_idat_data);
+    }
+
+    Huffman huffman = {
+        .bfinal = 0,
+        .btype = 0,
+        .hclen = 0,
+        .hdist = 0,
+        .hlit = 0
+    };
+
+    int size_multiplicator = 0;
+    switch (png.ihdr.color_type) {
+        case 0:
+            size_multiplicator = 1;
+            break;
+            
+        case 2:
+            size_multiplicator = 3;
+            break;
+        
+        case 4:
+            size_multiplicator = 2;
+            break;
+        
+        case 6:
+            size_multiplicator = 4;
+            break;
+        
+        default:
+            break;
+    }
+
+    png.raw.size = png.ihdr.height * (1 + png.ihdr.width * size_multiplicator);
+    png.raw.data = malloc(png.raw.size * sizeof(int));
+    if(png.raw.data == NULL) {
+        printf("Allocation failed (uncompressed).\n");
+        exit(0);
+    }
+
+    png.raw.cursor = 0;
+    getHuffman(
+        png.binary.data,
+        png.binary.size,
+
+        png.raw.data,
+        png.raw.size,
+        &png.raw.cursor,
+        
+        &huffman
+    );
+
+    png.pixels.size = png.ihdr.height * (1 + png.ihdr.width * size_multiplicator);
+    png.pixels.data = malloc(png.pixels.size * sizeof(Pixel));
+    if(png.pixels.data == NULL) {
+        printf("Allocation failed (pixels).\n");
+        exit(0);
+    }
+
+    png.pixels.cursor = 0;
+    getFilter(
+        png.pixels.data,
+        &png.pixels.cursor,
+
+        png.raw.data, 
+        png.raw.size,
+        &png
+    );
+
+    return png;
+}
+
+void freePng(PNG png) {
+    free(png.buffer.data);
+    free(png.hex.data);
+    free(png.binary.data);
+    free(png.raw.data);
+    free(png.pixels.data);
+    for(int i = 0; i < png.idats_amount; i++) {
+        free(png.idats[i].data);
+    }
+    free(png.idats);
+    free(png.plte.rgbs);
+    for(int i = 0; i < png.ancillaries_amount; i++) {
+        free(png.ancillaries[i].data);
+    }
+    free(png.ancillaries);
+} 
