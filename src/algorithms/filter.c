@@ -721,7 +721,7 @@ void getFilterGrayscaleA(PNG *png) {
 void getFilter(PNG *png) {
     // The row size is 1 + width * mult (mult up to 4) and is passed as an int.
     // Reject negative dimensions and widths large enough to overflow it.
-    if (/* image_width < 0 || png->ihdr.height < 0 || */ png->ihdr.width > (__SIZE_MAX__ - 1) / 4) {
+    if (/* image_width < 0 || png->ihdr.height < 0 || */ png->ihdr.width > (__SIZE_MAX__ - 1)) {
         return;
     }
 
