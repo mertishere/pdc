@@ -9,7 +9,7 @@ compute = src/compute/fill.c src/compute/gaussian.c src/compute/neighbours.c src
 
 src = src/png.c $(algorithms) $(utils) $(compute)
 
-pulse: main.c $(src)
+pdc: main.c $(src)
 	mkdir -p dist
 	mkdir -p out
 	$(CC) $(CFLAGS) $(FLAGS) -o dist/pdc main.c $(src) $(LDFLAGS)
