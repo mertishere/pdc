@@ -298,8 +298,8 @@ void tEXt(ANCI ancillary) {
     printf("%s => %s\n", keyword, data);
 }
 
-void handleAncillaries(PNG png, size_t ancillaries_amount) {
-    for(size_t i = 0; i < ancillaries_amount; i++) {
+void handleAncillaries(PNG png) {
+    for(int i = 0; i < png.ancillaries_amount; i++) {
         ANCI a = png.ancillaries[i];
 
         if(strcmp(a.signature, gAMA_signature) == 0) gAMA(a);

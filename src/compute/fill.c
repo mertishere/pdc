@@ -13,16 +13,13 @@
 #include "compute.h"
 
 void fillBlack(
-    Pixel *pixels,
-    size_t pixels_size,
-
     Pixel *output,
     size_t output_size,
 
-    PNG png
+    PNG *png
 ) {
-    int width = png.ihdr.width;
-    int height = png.ihdr.height;
+    int width = png->ihdr.width;
+    int height = png->ihdr.height;
 
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
@@ -38,32 +35,32 @@ void fillBlack(
             size_t bmp_index = (y + (y != (height - 1))) * width + x;
             size_t brp_index = (y + (y != (height - 1))) * width + (x + (x != (width - 1)));
 
-            if(tlp_index > pixels_size) return;
-            if(trp_index > pixels_size) return;
-            if(tmp_index > pixels_size) return;
-            if(lp_index > pixels_size) return;
-            if(rp_index > pixels_size) return;
-            if(mp_index > pixels_size) return;
-            if(blp_index > pixels_size) return;
-            if(brp_index > pixels_size) return;
-            if(bmp_index > pixels_size) return;
+            if(tlp_index > png->pixels.size) return;
+            if(trp_index > png->pixels.size) return;
+            if(tmp_index > png->pixels.size) return;
+            if(lp_index > png->pixels.size) return;
+            if(rp_index > png->pixels.size) return;
+            if(mp_index > png->pixels.size) return;
+            if(blp_index > png->pixels.size) return;
+            if(brp_index > png->pixels.size) return;
+            if(bmp_index > png->pixels.size) return;
 
             // top left, middle and right pixel
-            Pixel tlp = pixels[tlp_index];
-            Pixel tmp = pixels[tmp_index];
-            Pixel trp = pixels[trp_index];
+            Pixel tlp = png->pixels.data[tlp_index];
+            Pixel tmp = png->pixels.data[tmp_index];
+            Pixel trp = png->pixels.data[trp_index];
 
             // left, and right pixel
-            Pixel lp = pixels[lp_index];
-            Pixel rp = pixels[rp_index];
+            Pixel lp = png->pixels.data[lp_index];
+            Pixel rp = png->pixels.data[rp_index];
 
             // bottom left, middle and right pixel
-            Pixel blp = pixels[blp_index];
-            Pixel bmp = pixels[bmp_index];
-            Pixel brp = pixels[brp_index];
+            Pixel blp = png->pixels.data[blp_index];
+            Pixel bmp = png->pixels.data[bmp_index];
+            Pixel brp = png->pixels.data[brp_index];
 
             // middle pixel
-            Pixel p = pixels[mp_index];
+            Pixel p = png->pixels.data[mp_index];
 
             // compute average
             float brightness = computeBrightness(p);

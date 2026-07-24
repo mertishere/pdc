@@ -90,10 +90,6 @@ typedef struct {
     ANCI *ancillaries;
 } PNG;
 
-extern int countAncillaries(char hex[], size_t hex_size);
-extern int countIdats(char hex[], size_t hex_size);
-extern int countRgbs(char hex[], size_t hex_size);
-
 extern PNG parsePng(char *path);
-extern void freePng(PNG png);
+extern void freePng(PNG *png);
 #endif

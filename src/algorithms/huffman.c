@@ -181,80 +181,56 @@ void buildHuffman(
     }
 }
 
-void noHuffman(
-    char binary[],
-    size_t binary_len,
-
-    size_t *bp,
-
-    int uncompressed[],
-    size_t *ul
-) {
-    size_t binary_position = *bp;
-    size_t uncompressed_len = *ul;
-
+void noHuffman(PNG *png) {
     // skip the 5 bits to make a full byte out of the header |BFINAL (1b)|BTYPE(2b)|...(5b)|LEN|NLEN|...
-    binary_position += 5;
+    png->binary.cursor += 5;
 
-    if (binary_position + BYTE_LENGTH * 2 > binary_len) { 
-        *bp = binary_len;
-        *ul = uncompressed_len; 
+    if (png->binary.cursor + BYTE_LENGTH * 2 > png->binary.size) { 
+        png->binary.cursor = png->binary.size;
+        png->raw.cursor = png->raw.cursor; 
         return;
     }
 
     char len_slice[BYTE_LENGTH * 2 + 1];
-    writeBuffer(binary, len_slice, binary_position, binary_position + BYTE_LENGTH * 2);
+    writeBuffer(png->binary.data, len_slice, png->binary.cursor, png->binary.cursor + BYTE_LENGTH * 2);
     len_slice[BYTE_LENGTH * 2] = '\0';
 
     int len = binaryToInt(len_slice, BYTE_LENGTH * 2, true);
-    binary_position += BYTE_LENGTH * 2;
+    png->binary.cursor += BYTE_LENGTH * 2;
 
-    if (binary_position + BYTE_LENGTH * 2 > binary_len) { 
-        *bp = binary_len;
-        *ul = uncompressed_len; 
+    if (png->binary.cursor + BYTE_LENGTH * 2 > png->binary.size) { 
+        png->binary.cursor = png->binary.size;
+        png->raw.cursor = png->raw.cursor; 
         return;
     }
 
     char nlen_slice[BYTE_LENGTH * 2 + 1];
-    writeBuffer(binary, nlen_slice, binary_position, binary_position + BYTE_LENGTH * 2);
+    writeBuffer(png->binary.data, nlen_slice, png->binary.cursor, png->binary.cursor + BYTE_LENGTH * 2);
     nlen_slice[BYTE_LENGTH * 2] = '\0';
 
     int nlen = binaryToInt(nlen_slice, BYTE_LENGTH * 2, true);
-    binary_position += BYTE_LENGTH * 2;
+    png->binary.cursor += BYTE_LENGTH * 2;
 
     if (len + nlen != 65535) {
-        printf("invalid LEN and NLEN\n");
+        printf("Invalid LEN and NLEN.\n");
         exit(EXIT_FAILURE);
         return;
     }
 
     int enumerate = 0;
-    while (enumerate < len && (binary_position + BYTE_LENGTH) <= binary_len) {
+    while (enumerate < len && (png->binary.cursor + BYTE_LENGTH) <= png->binary.size) {
         char data_block_slice[BYTE_LENGTH];
-        writeBuffer(binary, data_block_slice, binary_position, binary_position + BYTE_LENGTH);
-        binary_position += BYTE_LENGTH;
+        writeBuffer(png->binary.data, data_block_slice, png->binary.cursor, png->binary.cursor + BYTE_LENGTH);
+        png->binary.cursor += BYTE_LENGTH;
         int parsed_data_block = binaryToInt(data_block_slice, BYTE_LENGTH, true);
-        uncompressed[uncompressed_len] = parsed_data_block;
-        uncompressed_len++;
-        uncompressed[uncompressed_len] = '\0';
+        png->raw.data[png->raw.cursor] = parsed_data_block;
+        png->raw.cursor++;
+        png->raw.data[png->raw.cursor] = '\0';
         enumerate += 1;
     }
-
-    *bp = binary_position;
-    *ul = uncompressed_len;
 }
 
-void staticHuffman(
-    char binary[],
-    size_t binary_len,
-    size_t *bp,
-
-    int uncompressed[],
-    size_t *ul
-) {
-    size_t binary_position = *bp;
-    size_t uncompressed_position = *ul;
-
+void staticHuffman(PNG *png) {
     // fixed huffman tree
     // 0 - 143 | 8 bits   (00110000 - 10111111) (48 - 191)
     // 144 - 255 | 9 bits (110010000 - 111111111) (400 - 511)
@@ -265,79 +241,67 @@ void staticHuffman(
     char first_eight_slice[8];
     char first_nine_slice[9];
 
-    while (binary_position < binary_len) {
-        writeBuffer(binary, first_seven_slice, binary_position, binary_position + 7);
+    while (png->binary.cursor < png->binary.size) {
+        writeBuffer(png->binary.data, first_seven_slice, png->binary.cursor, png->binary.cursor + 7);
         int first_seven = binaryToInt(first_seven_slice, 7, false);
         if(first_seven >= 0 && first_seven <= 23) {
-            binary_position += 7;
+            png->binary.cursor += 7;
 
             int symbol = 256 + first_seven;
             if (symbol != 256) {
                 handleLzssStatic(
                     symbol,
-                    binary,
-                    binary_len,
-                    &binary_position,
-                    uncompressed,
-                    &uncompressed_position
+                    png
                 );
                 continue;
             } else break;
         }
 
-        writeBuffer(binary, first_eight_slice, binary_position, binary_position + 8);
+        writeBuffer(png->binary.data, first_eight_slice, png->binary.cursor, png->binary.cursor + 8);
         int first_eight = binaryToInt(first_eight_slice, 8, false);
 
         if (first_eight >= 48 && first_eight <= 191) {
-            binary_position += 8;
+            png->binary.cursor += 8;
 
-            uncompressed[uncompressed_position] = 0 + first_eight - 48;
-            uncompressed_position++;
-            uncompressed[uncompressed_position] = '\0';
+            png->raw.data[png->raw.cursor] = 0 + first_eight - 48;
+            png->raw.cursor++;
+            png->raw.data[png->raw.cursor] = '\0';
             continue;
         }
 
         // 280 - 287 | 8 bits (11000000 - 11000111) (192 - 199)
         if (first_eight >= 192 && first_eight <= 199) {
-            binary_position += 8;
+            png->binary.cursor += 8;
 
             int symbol = 280 + (first_eight - 192);
             if (symbol > 285) {
-                printf("INVALID SYMBOL");
+                printf("Invalid symbol.");
                 exit(EXIT_FAILURE);
             }
 
             handleLzssStatic(
                 symbol,
-                binary,
-                binary_len,
-                &binary_position,
-                uncompressed,
-                &uncompressed_position
+                png
             );
             continue;
         }
 
-        writeBuffer(binary, first_nine_slice, binary_position, binary_position + 9);
+        writeBuffer(png->binary.data, first_nine_slice, png->binary.cursor, png->binary.cursor + 9);
         int first_nine = binaryToInt(first_nine_slice, 9, false);
         if (first_nine >= 400 && first_nine <= 511) {
-            binary_position += 9;
+            png->binary.cursor += 9;
 
-            uncompressed[uncompressed_position] = 144 + first_nine - 400;
-            uncompressed_position++;
-            uncompressed[uncompressed_position] = '\0';
+            png->raw.data[png->raw.cursor] = 144 + first_nine - 400;
+            png->raw.cursor++;
+            png->raw.data[png->raw.cursor] = '\0';
             continue;
         }
     }
-
-    *bp = binary_position;
-    *ul = uncompressed_position;
 }
 
 void symbolsBuilder(
-    char binary[],
-    size_t *bp,
-    
+    PNG *png,
+
     CodeLengthSymbols cls[],
     int cls_length,
     
@@ -359,15 +323,14 @@ void symbolsBuilder(
     //        18: Repeat a code length of 0 for 11 - 138 times
     //            (7 bits of length)
 
-    int binary_position = *bp;
     int builder_len = 0;
 
     int bit_storer[16];
     int bit_storer_len = 0;
 
     while (builder_len < limit) {
-        char bit = binary[binary_position];
-        binary_position += BIT_LENGTH;
+        char bit = png->binary.data[png->binary.cursor];
+        png->binary.cursor += BIT_LENGTH;
         bit_storer[bit_storer_len] = bit - INT_TO_ASCII_OFFSET;
         bit_storer_len++;
 
@@ -390,9 +353,9 @@ void symbolsBuilder(
                 int previous_code = builder[builder_len - 1];
 
                 char extra_bits_slice[2];
-                writeBuffer(binary, extra_bits_slice, binary_position, binary_position + 2);
+                writeBuffer(png->binary.data, extra_bits_slice, png->binary.cursor, png->binary.cursor + 2);
                 int extra_bits = binaryToInt(extra_bits_slice, 2, true);
-                binary_position += 2;
+                png->binary.cursor += 2;
 
                 int total_repeat = extra_bits + 3;
                 for (int i = 0; i < total_repeat; i++) {
@@ -404,9 +367,9 @@ void symbolsBuilder(
                 int previous_code = 0;
                 
                 char extra_bits_slice[3];
-                writeBuffer(binary, extra_bits_slice, binary_position, binary_position + 3);
+                writeBuffer(png->binary.data, extra_bits_slice, png->binary.cursor, png->binary.cursor + 3);
                 int extra_bits = binaryToInt(extra_bits_slice, 3, true);
-                binary_position += 3;
+                png->binary.cursor += 3;
 
                 int total_repeat = extra_bits + 3;
                 for (int i = 0; i < total_repeat; i++) {
@@ -418,9 +381,9 @@ void symbolsBuilder(
                 int previous_code = 0;
 
                 char extra_bits_slice[7];
-                writeBuffer(binary, extra_bits_slice, binary_position, binary_position + 7);
+                writeBuffer(png->binary.data, extra_bits_slice, png->binary.cursor, png->binary.cursor + 7);
                 int extra_bits = binaryToInt(extra_bits_slice, 7, true);
-                binary_position += 7;
+                png->binary.cursor += 7;
 
                 int total_repeat = extra_bits + 11;
                 for (int i = 0; i < total_repeat; i++) {
@@ -432,8 +395,6 @@ void symbolsBuilder(
             bit_storer[bit_storer_len] = '\0';
         }
     }
-
-    *bp = binary_position;
 }
 
 void huffmanBuilder(
@@ -474,21 +435,10 @@ void huffmanBuilder(
 }
 
 void dynamicHuffman(
-    char binary[],
-    size_t binary_len,
-    size_t *bp,
-
-    int uncompressed[],
-    size_t uncompressed_len,
-    size_t *up,
-
+    PNG *png,
     Huffman *huffman
 ) {
-    huffmanBuilder(binary, binary_len, huffman, bp);
-
-    size_t binary_position = *bp;
-    size_t uncompressed_position = *up;
-
+    huffmanBuilder(png->binary.data, png->binary.size, huffman, &png->binary.cursor);
     // HCLEN length
     //
     // 19 hclen order length
@@ -499,11 +449,16 @@ void dynamicHuffman(
     }
 
     for (int i = 0; i < huffman->hclen; i++) {
-        if (binary_position + 3 > binary_len) break;
+        if (png->binary.cursor + 3 > png->binary.size) break;
 
         char list_code_length[3];
-        writeBuffer(binary, list_code_length, binary_position, binary_position + 3);
-        binary_position += 3;
+        writeBuffer(
+            png->binary.data,
+            list_code_length,
+            png->binary.cursor,
+            png->binary.cursor + 3
+        );
+        png->binary.cursor += 3;
         int code_length_int = binaryToInt(list_code_length, 3, true);
 
         if(code_length_int > 0) code_length_count++;
@@ -583,8 +538,7 @@ void dynamicHuffman(
     }
 
     symbolsBuilder(
-        binary, 
-        &binary_position, 
+        png,
 
         cls,
         cls_size,
@@ -622,8 +576,7 @@ void dynamicHuffman(
     }
 
     symbolsBuilder(
-        binary,
-        &binary_position,
+        png,
 
         cls,
         HCLEN_SIZE,
@@ -659,14 +612,14 @@ void dynamicHuffman(
     int hlit_bit_storer[hlit_bit_storer_size];
     int hlit_bit_storer_len = 0;
 
-    while (binary_position < binary_len) {
-        char bit = binary[binary_position];
-        binary_position += BIT_LENGTH;
+    while (png->binary.cursor < png->binary.size) {
+        char bit = png->binary.data[png->binary.cursor];
+        png->binary.cursor += BIT_LENGTH;
 
         if(hlit_bit_storer_len >= hlit_bit_storer_size) {
-            printf("Returned bit=%ld\n", binary_position);
-            printf("HLIT bit storer exceeded HCLEN size\n");
-            exit(0);
+            printf("Returned bit=%ld\n", png->binary.cursor);
+            printf("HLIT bit storer exceeded HCLEN size.\n");
+            exit(EXIT_FAILURE);
         }
 
         hlit_bit_storer[hlit_bit_storer_len] = bit - INT_TO_ASCII_OFFSET;
@@ -688,105 +641,66 @@ void dynamicHuffman(
 
         if (hlit_symbol == 256) break;
         if (hlit_symbol < 256) {
-            uncompressed[uncompressed_position] = hlit_symbol;
-            uncompressed_position++;
+            png->raw.data[png->raw.cursor] = hlit_symbol;
+            png->raw.cursor++;
             continue;
         }
 
         handleLzssDynamic(
             hlit_symbol,
-
-            binary,
-            binary_len,
-            &binary_position,
-
-            uncompressed, 
-            uncompressed_len,
-            &uncompressed_position,
-            
             hdist_huffman_codes,
-            hdist_huffman_codes_size
+            hdist_huffman_codes_size,
+            png
         );
     }
-
-    *bp = binary_position;
-    *up = uncompressed_position;
 }
 
 void handleBtype(
-    char binary[],
-    size_t binary_len,
-    size_t *bp,
-
-    int uncompressed[],
-    size_t uncompressed_len,
-    size_t *ul,
-
+    PNG *png,
     Huffman *huffman
 ) {
     switch (huffman->btype) {
         case 0:
-            noHuffman(binary, binary_len, bp, uncompressed, ul);
+            noHuffman(png);
             break;
         case 1:
-            staticHuffman(binary, binary_len, bp, uncompressed, ul);
+            staticHuffman(png);
             break;
         case 2:
-            dynamicHuffman(
-                binary,
-                binary_len,
-                bp,
-            
-                uncompressed,
-                uncompressed_len,
-                ul,
-            
-                huffman
-            );
+            dynamicHuffman(png, huffman);
             break;
         default:
-            printf("invalid huffman");
+            printf("Invalid huffman.\n");
             exit(EXIT_FAILURE);
+            break;
     }
 }
 
-void getHuffman(
-    char binary[],
-    size_t binary_len,
-    
-    int uncompressed[],
-    size_t uncompressed_len,
-    size_t *ul,
+void getHuffman(PNG *png) {
+    Huffman huffman = {};
 
-    Huffman *huffman
-) {
-    size_t bp = 0;
+    png->binary.cursor = 0;
     while (true) {
         // Check for the BFINAL and BTYPE
-        if (bp + BIT_LENGTH + BIT_LENGTH * 2 >= binary_len) break;
+        if (png->binary.cursor + BIT_LENGTH + BIT_LENGTH * 2 >= png->binary.size) break;
 
         char bfinal[BIT_LENGTH];
-        writeBuffer(binary, bfinal, bp, bp + BIT_LENGTH);
-        bp += BIT_LENGTH;
+        writeBuffer(png->binary.data, bfinal, png->binary.cursor, png->binary.cursor + BIT_LENGTH);
+        png->binary.cursor += BIT_LENGTH;
 
-        huffman->bfinal = binaryToInt(bfinal, BIT_LENGTH, true);
+        huffman.bfinal = binaryToInt(bfinal, BIT_LENGTH, true);
 
         char btype[BIT_LENGTH * 2];
-        writeBuffer(binary, btype, bp, bp + BIT_LENGTH * 2);
+        writeBuffer(png->binary.data, btype, png->binary.cursor, png->binary.cursor + BIT_LENGTH * 2);
 
-        bp += BIT_LENGTH * 2;
-        huffman->btype = binaryToInt(btype, BIT_LENGTH * 2, true);
+        png->binary.cursor += BIT_LENGTH * 2;
+        huffman.btype = binaryToInt(btype, BIT_LENGTH * 2, true);
 
         handleBtype(
-            binary,
-            binary_len,
-            &bp,
-            uncompressed,
-            uncompressed_len,
-            ul,
-            huffman
+            png,
+            &huffman
         );
 
-        if (huffman->bfinal == 1) break;
+        if (huffman.bfinal == 1) break;
     }
 }

@@ -6,57 +6,49 @@
 #include "utils.h"
 
 
-void getFilterRgbA(
-    int uncompressed[], 
-    size_t uncompressed_len,
-    
-    Pixel pixels[],
-    size_t *pl,
-
-    int image_height,
-    int row_size
-) {    
-    size_t pixels_position = *pl;
-
+void getFilterRgbA(PNG *png) {
+    size_t row_size = (1 + (png->ihdr.width * 4));
     int current_filter_method = 0;
     int height_index = 0;
-    for (int i = 0; i < image_height; i++) {
+
+    for (size_t i = 0; i < png->ihdr.height; i++) {
         int row_index = 0;
+
         while (true) {
             int height_row_size = height_index * row_size;
-            int bit_index = height_row_size + row_index;
+            size_t bit_index = height_row_size + row_index;
             
             if (bit_index >= row_size * (height_index + 1)) break;
-            if ((size_t)bit_index >= uncompressed_len) break;
+            if ((size_t)bit_index >= png->raw.size) break;
             if (row_index == 0) {
-                current_filter_method = uncompressed[bit_index];
+                current_filter_method = png->raw.data[bit_index];
                 row_index += 1;
                 continue;
             }
 
             if (current_filter_method == 0) { // NO FILTER
-                int r_bit = uncompressed[bit_index];
-                int g_bit = uncompressed[bit_index + 1];
-                int b_bit = uncompressed[bit_index + 2];
-                int a_bit = uncompressed[bit_index + 3];
+                int r_bit = png->raw.data[bit_index];
+                int g_bit = png->raw.data[bit_index + 1];
+                int b_bit = png->raw.data[bit_index + 2];
+                int a_bit = png->raw.data[bit_index + 3];
 
-                pixels[pixels_position].rgb.r = r_bit;
-                pixels[pixels_position].rgb.g = g_bit;
-                pixels[pixels_position].rgb.b = b_bit;
-                pixels[pixels_position].rgb.a = a_bit;
+                png->pixels.data[png->pixels.cursor].rgb.r = r_bit;
+                png->pixels.data[png->pixels.cursor].rgb.g = g_bit;
+                png->pixels.data[png->pixels.cursor].rgb.b = b_bit;
+                png->pixels.data[png->pixels.cursor].rgb.a = a_bit;
 
-                pixels[pixels_position].col = height_index;
-                pixels[pixels_position].row = (row_index - 1) / 4;
-                pixels_position++;
+                png->pixels.data[png->pixels.cursor].col = height_index;
+                png->pixels.data[png->pixels.cursor].row = (row_index - 1) / 4;
+                png->pixels.cursor++;
 
                 row_index += 4;
                 continue;
             }
 
-            int final_r_bit = uncompressed[bit_index];
-            int final_g_bit = uncompressed[bit_index + 1];
-            int final_b_bit = uncompressed[bit_index + 2];
-            int final_a_bit = uncompressed[bit_index + 3];
+            int final_r_bit = png->raw.data[bit_index];
+            int final_g_bit = png->raw.data[bit_index + 1];
+            int final_b_bit = png->raw.data[bit_index + 2];
+            int final_a_bit = png->raw.data[bit_index + 3];
 
             if (current_filter_method == 1) {
                 int previous_r_bit = 0;
@@ -65,10 +57,10 @@ void getFilterRgbA(
                 int previous_a_bit = 0;
 
                 if (row_index >= 4) {
-                    previous_r_bit = uncompressed[bit_index - 4];
-                    previous_g_bit = uncompressed[bit_index - 3];
-                    previous_b_bit = uncompressed[bit_index - 2];
-                    previous_a_bit = uncompressed[bit_index - 1];
+                    previous_r_bit = png->raw.data[bit_index - 4];
+                    previous_g_bit = png->raw.data[bit_index - 3];
+                    previous_b_bit = png->raw.data[bit_index - 2];
+                    previous_a_bit = png->raw.data[bit_index - 1];
                 }
 
                 final_r_bit = (final_r_bit + previous_r_bit) % 256;
@@ -83,10 +75,10 @@ void getFilterRgbA(
                 int top_a_bit = 0;
 
                 if (height_index > 0) {
-                    top_r_bit = uncompressed[bit_index - row_move_up];
-                    top_g_bit = uncompressed[bit_index + 1 - row_move_up];
-                    top_b_bit = uncompressed[bit_index + 2 - row_move_up];
-                    top_a_bit = uncompressed[bit_index + 3 - row_move_up];
+                    top_r_bit = png->raw.data[bit_index - row_move_up];
+                    top_g_bit = png->raw.data[bit_index + 1 - row_move_up];
+                    top_b_bit = png->raw.data[bit_index + 2 - row_move_up];
+                    top_a_bit = png->raw.data[bit_index + 3 - row_move_up];
                 }
 
                 final_r_bit = (final_r_bit + top_r_bit) % 256;
@@ -100,10 +92,10 @@ void getFilterRgbA(
                 int previous_a_bit = 0;
 
                 if (row_index >= 4) {
-                    previous_r_bit = uncompressed[bit_index - 4];
-                    previous_g_bit = uncompressed[bit_index - 3];
-                    previous_b_bit = uncompressed[bit_index - 2];
-                    previous_a_bit = uncompressed[bit_index - 1];
+                    previous_r_bit = png->raw.data[bit_index - 4];
+                    previous_g_bit = png->raw.data[bit_index - 3];
+                    previous_b_bit = png->raw.data[bit_index - 2];
+                    previous_a_bit = png->raw.data[bit_index - 1];
                 }
 
                 int row_move_up = row_size;
@@ -113,10 +105,10 @@ void getFilterRgbA(
                 int top_a_bit = 0;
 
                 if (height_index > 0) {
-                    top_r_bit = uncompressed[bit_index - row_move_up];
-                    top_g_bit = uncompressed[bit_index + 1 - row_move_up];
-                    top_b_bit = uncompressed[bit_index + 2 - row_move_up];
-                    top_a_bit = uncompressed[bit_index + 3 - row_move_up];
+                    top_r_bit = png->raw.data[bit_index - row_move_up];
+                    top_g_bit = png->raw.data[bit_index + 1 - row_move_up];
+                    top_b_bit = png->raw.data[bit_index + 2 - row_move_up];
+                    top_a_bit = png->raw.data[bit_index + 3 - row_move_up];
                 }
 
                 final_r_bit = (final_r_bit + ((top_r_bit + previous_r_bit) / 2)) % 256;
@@ -130,10 +122,10 @@ void getFilterRgbA(
                 int previous_a_bit = 0;
 
                 if (row_index >= 4) {
-                    previous_r_bit = uncompressed[bit_index - 4];
-                    previous_g_bit = uncompressed[bit_index - 3];
-                    previous_b_bit = uncompressed[bit_index - 2];
-                    previous_a_bit = uncompressed[bit_index - 1];
+                    previous_r_bit = png->raw.data[bit_index - 4];
+                    previous_g_bit = png->raw.data[bit_index - 3];
+                    previous_b_bit = png->raw.data[bit_index - 2];
+                    previous_a_bit = png->raw.data[bit_index - 1];
                 }
 
                 int row_move_up = row_size;
@@ -143,10 +135,10 @@ void getFilterRgbA(
                 int top_a_bit = 0;
 
                 if (height_index > 0) {
-                    top_r_bit = uncompressed[bit_index - row_move_up];
-                    top_g_bit = uncompressed[bit_index + 1 - row_move_up];
-                    top_b_bit = uncompressed[bit_index + 2 - row_move_up];
-                    top_a_bit = uncompressed[bit_index + 3 - row_move_up];
+                    top_r_bit = png->raw.data[bit_index - row_move_up];
+                    top_g_bit = png->raw.data[bit_index + 1 - row_move_up];
+                    top_b_bit = png->raw.data[bit_index + 2 - row_move_up];
+                    top_a_bit = png->raw.data[bit_index + 3 - row_move_up];
                 }
 
                 int top_left_r_bit = 0;
@@ -155,10 +147,10 @@ void getFilterRgbA(
                 int top_left_a_bit = 0;
 
                 if (height_index > 0 && row_index >= 4) {
-                    top_left_r_bit = uncompressed[bit_index - row_move_up - 4];
-                    top_left_g_bit = uncompressed[bit_index - row_move_up - 3];
-                    top_left_b_bit = uncompressed[bit_index - row_move_up - 2];
-                    top_left_a_bit = uncompressed[bit_index - row_move_up - 1];
+                    top_left_r_bit = png->raw.data[bit_index - row_move_up - 4];
+                    top_left_g_bit = png->raw.data[bit_index - row_move_up - 3];
+                    top_left_b_bit = png->raw.data[bit_index - row_move_up - 2];
+                    top_left_a_bit = png->raw.data[bit_index - row_move_up - 1];
                 }
 
                 int r_predictor;
@@ -226,7 +218,7 @@ void getFilterRgbA(
                 final_a_bit = (final_a_bit + a_predictor) % 256;
             } else {
                 printf("Invalid filter method! %d\n", current_filter_method);
-                exit(0);
+                exit(EXIT_FAILURE);
             }
 
             int r_bit = final_r_bit;
@@ -234,87 +226,76 @@ void getFilterRgbA(
             int b_bit = final_b_bit;
             int a_bit = final_a_bit;
 
-            uncompressed[bit_index] = r_bit;
-            uncompressed[bit_index + 1] = g_bit;
-            uncompressed[bit_index + 2] = b_bit;
-            uncompressed[bit_index + 3] = a_bit;
+            png->raw.data[bit_index] = r_bit;
+            png->raw.data[bit_index + 1] = g_bit;
+            png->raw.data[bit_index + 2] = b_bit;
+            png->raw.data[bit_index + 3] = a_bit;
 
-            pixels[pixels_position].rgb.r = r_bit;
-            pixels[pixels_position].rgb.g = g_bit;
-            pixels[pixels_position].rgb.b = b_bit;
-            pixels[pixels_position].rgb.a = a_bit;
+            png->pixels.data[png->pixels.cursor].rgb.r = r_bit;
+            png->pixels.data[png->pixels.cursor].rgb.g = g_bit;
+            png->pixels.data[png->pixels.cursor].rgb.b = b_bit;
+            png->pixels.data[png->pixels.cursor].rgb.a = a_bit;
 
-            pixels[pixels_position].col = height_index;
-            pixels[pixels_position].row = (row_index - 1) / 4;
-            pixels_position++;
+            png->pixels.data[png->pixels.cursor].col = height_index;
+            png->pixels.data[png->pixels.cursor].row = (row_index - 1) / 4;
+            png->pixels.cursor++;
 
             row_index += 4;
         }
         height_index += 1;
     }
-
-    *pl = pixels_position;
 }
 
-void getFilterRgb(
-    int uncompressed[], 
-    size_t uncompressed_len,
-    
-    Pixel pixels[],
-    size_t *pl,
-
-    int image_height,
-    int row_size
-) {    
-    size_t pixels_position = *pl;
+void getFilterRgb(PNG *png) {
+    size_t row_size = (1 + (png->ihdr.width * 3));
 
     int current_filter_method = 0;
     int height_index = 0;
-    for (int i = 0; i < image_height; i++) {
+    for (size_t i = 0; i < png->ihdr.height; i++) {
         int row_index = 0;
         while (true) {
             int height_row_size = height_index * row_size;
-            int bit_index = height_row_size + row_index;
+            size_t bit_index = height_row_size + row_index;
 
             if (bit_index >= row_size * (height_index + 1)) break;
-            if ((size_t)bit_index >= uncompressed_len) break;
+            if ((size_t)bit_index >= png->raw.size) break;
             if (row_index == 0) {
-                current_filter_method = uncompressed[bit_index];
+                current_filter_method = png->raw.data[bit_index];
                 row_index += 1;
                 continue;
             }
 
             if (current_filter_method == 0) { // NO FILTER
-                int r_bit = uncompressed[bit_index];
-                int g_bit = uncompressed[bit_index + 1];
-                int b_bit = uncompressed[bit_index + 2];
+                int r_bit = png->raw.data[bit_index];
+                int g_bit = png->raw.data[bit_index + 1];
+                int b_bit = png->raw.data[bit_index + 2];
 
-                pixels[pixels_position].rgb.r = r_bit;
-                pixels[pixels_position].rgb.g = g_bit;
-                pixels[pixels_position].rgb.b = b_bit;
-                pixels[pixels_position].rgb.a = 255;
+                png->pixels.data[png->pixels.cursor].rgb.r = r_bit;
+                png->pixels.data[png->pixels.cursor].rgb.g = g_bit;
+                png->pixels.data[png->pixels.cursor].rgb.b = b_bit;
+                png->pixels.data[png->pixels.cursor].rgb.a = 255;
 
-                pixels[pixels_position].col = height_index;
-                pixels[pixels_position].row = (row_index - 1) / 3;
-                pixels_position++;
+                png->pixels.data[png->pixels.cursor].col = height_index;
+                png->pixels.data[png->pixels.cursor].row = (row_index - 1) / 3;
+                png->pixels.cursor++;
 
                 row_index += 3;
                 continue;
             }
 
-            int final_r_bit = uncompressed[bit_index];
-            int final_g_bit = uncompressed[bit_index + 1];
-            int final_b_bit = uncompressed[bit_index + 2];
+            int final_r_bit = png->raw.data[bit_index];
+            int final_g_bit = png->raw.data[bit_index + 1];
+            int final_b_bit = png->raw.data[bit_index + 2];
 
             if (current_filter_method == 1) {
                 int previous_r_bit = 0;
                 int previous_g_bit = 0;
                 int previous_b_bit = 0;
 
-                if (row_index >= 3) {
-                    previous_r_bit = uncompressed[bit_index - 3];
-                    previous_g_bit = uncompressed[bit_index - 2];
-                    previous_b_bit = uncompressed[bit_index - 1];
+                if (row_index > 1) {
+                    previous_r_bit = png->raw.data[bit_index - 3];
+                    previous_g_bit = png->raw.data[bit_index - 2];
+                    previous_b_bit = png->raw.data[bit_index - 1];
                 }
 
                 final_r_bit = (final_r_bit + previous_r_bit) % 256;
@@ -327,9 +308,9 @@ void getFilterRgb(
                 int top_b_bit = 0;
 
                 if (height_index > 0) {
-                    top_r_bit = uncompressed[bit_index - row_move_up];
-                    top_g_bit = uncompressed[bit_index + 1 - row_move_up];
-                    top_b_bit = uncompressed[bit_index + 2 - row_move_up];
+                    top_r_bit = png->raw.data[bit_index - row_move_up];
+                    top_g_bit = png->raw.data[bit_index + 1 - row_move_up];
+                    top_b_bit = png->raw.data[bit_index + 2 - row_move_up];
                 }
 
                 final_r_bit = (final_r_bit + top_r_bit) % 256;
@@ -340,10 +321,10 @@ void getFilterRgb(
                 int previous_g_bit = 0;
                 int previous_b_bit = 0;
 
-                if (row_index >= 3) {
-                    previous_r_bit = uncompressed[bit_index - 3];
-                    previous_g_bit = uncompressed[bit_index - 2];
-                    previous_b_bit = uncompressed[bit_index - 1];
+                if (row_index > 1) {
+                    previous_r_bit = png->raw.data[bit_index - 3];
+                    previous_g_bit = png->raw.data[bit_index - 2];
+                    previous_b_bit = png->raw.data[bit_index - 1];
                 }
 
                 int row_move_up = row_size;
@@ -352,9 +333,9 @@ void getFilterRgb(
                 int top_b_bit = 0;
 
                 if (height_index > 0) {
-                    top_r_bit = uncompressed[bit_index - row_move_up];
-                    top_g_bit = uncompressed[bit_index + 1 - row_move_up];
-                    top_b_bit = uncompressed[bit_index + 2 - row_move_up];
+                    top_r_bit = png->raw.data[bit_index - row_move_up];
+                    top_g_bit = png->raw.data[bit_index + 1 - row_move_up];
+                    top_b_bit = png->raw.data[bit_index + 2 - row_move_up];
                 }
 
                 final_r_bit = (final_r_bit + ((top_r_bit + previous_r_bit) / 2) % 256);
@@ -365,10 +346,10 @@ void getFilterRgb(
                 int previous_g_bit = 0;
                 int previous_b_bit = 0;
 
-                if (row_index >= 3) {
-                    previous_r_bit = uncompressed[bit_index - 3];
-                    previous_g_bit = uncompressed[bit_index - 2];
-                    previous_b_bit = uncompressed[bit_index - 1];
+                if (row_index > 1) {
+                    previous_r_bit = png->raw.data[bit_index - 3];
+                    previous_g_bit = png->raw.data[bit_index - 2];
+                    previous_b_bit = png->raw.data[bit_index - 1];
                 }
 
                 int row_move_up = row_size;
@@ -377,9 +358,9 @@ void getFilterRgb(
                 int top_b_bit = 0;
 
                 if (height_index > 0) {
-                    top_r_bit = uncompressed[bit_index - row_move_up];
-                    top_g_bit = uncompressed[bit_index + 1 - row_move_up];
-                    top_b_bit = uncompressed[bit_index + 2 - row_move_up];
+                    top_r_bit = png->raw.data[bit_index - row_move_up];
+                    top_g_bit = png->raw.data[bit_index + 1 - row_move_up];
+                    top_b_bit = png->raw.data[bit_index + 2 - row_move_up];
                 }
 
                 int top_left_r_bit = 0;
@@ -387,9 +368,9 @@ void getFilterRgb(
                 int top_left_b_bit = 0;
 
                 if (height_index > 0 && row_index >= 4) {
-                    top_left_r_bit = uncompressed[bit_index - row_move_up - 3];
-                    top_left_g_bit = uncompressed[bit_index - row_move_up - 2];
-                    top_left_b_bit = uncompressed[bit_index - row_move_up - 1];
+                    top_left_r_bit = png->raw.data[bit_index - row_move_up - 3];
+                    top_left_g_bit = png->raw.data[bit_index - row_move_up - 2];
+                    top_left_b_bit = png->raw.data[bit_index - row_move_up - 1];
                 }
 
                 int r_predictor;
@@ -445,77 +426,66 @@ void getFilterRgb(
             int g_bit = final_g_bit;
             int b_bit = final_b_bit;
 
-            uncompressed[bit_index] = r_bit;
-            uncompressed[bit_index + 1] = g_bit;
-            uncompressed[bit_index + 2] = b_bit;
+            png->raw.data[bit_index] = r_bit;
+            png->raw.data[bit_index + 1] = g_bit;
+            png->raw.data[bit_index + 2] = b_bit;
 
-            pixels[pixels_position].rgb.r = r_bit;
-            pixels[pixels_position].rgb.g = g_bit;
-            pixels[pixels_position].rgb.b = b_bit;
-            pixels[pixels_position].rgb.a = 255;
+            png->pixels.data[png->pixels.cursor].rgb.r = r_bit;
+            png->pixels.data[png->pixels.cursor].rgb.g = g_bit;
+            png->pixels.data[png->pixels.cursor].rgb.b = b_bit;
+            png->pixels.data[png->pixels.cursor].rgb.a = 255;
 
-            pixels[pixels_position].col = height_index;
-            pixels[pixels_position].row = (row_index - 1) / 4;
-            pixels_position++;
+            png->pixels.data[png->pixels.cursor].col = height_index;
+            png->pixels.data[png->pixels.cursor].row = (row_index - 1) / 3;
+            png->pixels.cursor++;
 
             row_index += 3;
         }
         height_index += 1;
     }
-
-    *pl = pixels_position;
 }
 
-void getFilterGrayscale(
-    int uncompressed[], 
-    size_t uncompressed_len,
-    
-    Pixel pixels[],
-    size_t *pl,
-
-    int image_height,
-    int row_size
-) {
-    size_t pixels_position = *pl;
+void getFilterGrayscale(PNG *png) {
+    size_t row_size = (1 + (png->ihdr.width * 1));
 
     int current_filter_method = 0;
     int height_index = 0;
-    for(int i = 0; i < image_height; i++) {
+    for(size_t i = 0; i < png->ihdr.height; i++) {
         int row_index = 0;
         while (true) {
             int height_row_size = height_index * row_size;
-            int bit_index = height_row_size + row_index;
+            size_t bit_index = height_row_size + row_index;
 
             if (bit_index >= row_size * (height_index + 1)) break;
-            if ((size_t)bit_index >= uncompressed_len) break;
+            if ((size_t)bit_index >= png->raw.size) break;
             if (row_index == 0) {
-                current_filter_method = uncompressed[bit_index];
+                current_filter_method = png->raw.data[bit_index];
                 row_index += 1;
                 continue;
             }
 
             if (current_filter_method == 0) { // NO FILTER
-                int gray_scale = uncompressed[bit_index];
-                pixels[pixels_position].rgb.r = gray_scale;
-                pixels[pixels_position].rgb.g = gray_scale;
-                pixels[pixels_position].rgb.b = gray_scale;
-                pixels[pixels_position].rgb.a = 255;
+                int gray_scale = png->raw.data[bit_index];
+                png->pixels.data[png->pixels.cursor].rgb.r = gray_scale;
+                png->pixels.data[png->pixels.cursor].rgb.g = gray_scale;
+                png->pixels.data[png->pixels.cursor].rgb.b = gray_scale;
+                png->pixels.data[png->pixels.cursor].rgb.a = 255;
 
-                pixels[pixels_position].col = height_index;
-                pixels[pixels_position].row = (row_index - 1) / 4;
-                pixels_position++;
+                png->pixels.data[png->pixels.cursor].col = height_index;
+                png->pixels.data[png->pixels.cursor].row = (row_index - 1) / 1;
+                png->pixels.cursor++;
 
                 row_index += 1;
                 continue;
             }
 
-            int u16_gray_scale = uncompressed[bit_index];
+            int u16_gray_scale = png->raw.data[bit_index];
 
             if (current_filter_method == 1) {
                 int previous_gray_scale_bit = 0;
 
                 if (row_index >= 1) {
-                    previous_gray_scale_bit = uncompressed[bit_index - 1];
+                    previous_gray_scale_bit = png->raw.data[bit_index - 1];
                 }
 
                 u16_gray_scale = (u16_gray_scale + previous_gray_scale_bit) % 256;
@@ -524,7 +494,7 @@ void getFilterGrayscale(
                 int top_gray_scale_bit = 0;
 
                 if (height_index > 0) {
-                    top_gray_scale_bit = uncompressed[bit_index - row_move_up];
+                    top_gray_scale_bit = png->raw.data[bit_index - row_move_up];
                 }
 
                 u16_gray_scale = (u16_gray_scale + top_gray_scale_bit) % 256;
@@ -532,14 +502,14 @@ void getFilterGrayscale(
                 int previous_gray_scale_bit = 0;
 
                 if (row_index >= 1) {
-                    previous_gray_scale_bit = uncompressed[bit_index - 1];
+                    previous_gray_scale_bit = png->raw.data[bit_index - 1];
                 }
 
                 int row_move_up = height_row_size;
                 int top_gray_scale_bit = 0;
 
                 if (height_index > 0) {
-                    top_gray_scale_bit = uncompressed[bit_index - row_move_up];
+                    top_gray_scale_bit = png->raw.data[bit_index - row_move_up];
                 }
 
                 u16_gray_scale = (u16_gray_scale + ((top_gray_scale_bit + previous_gray_scale_bit) / 2)) % 256;
@@ -547,20 +517,20 @@ void getFilterGrayscale(
                 int previous_gray_scale_bit = 0;
 
                 if (row_index >= 1) {
-                    previous_gray_scale_bit = uncompressed[bit_index - 1];
+                    previous_gray_scale_bit = png->raw.data[bit_index - 1];
                 }
 
                 int row_move_up = height_row_size;
                 int top_gray_scale_bit = 0;
 
                 if (height_index > 0) {
-                    top_gray_scale_bit = uncompressed[bit_index - row_move_up];
+                    top_gray_scale_bit = png->raw.data[bit_index - row_move_up];
                 }
 
                 int top_left_gray_scale_bit = 0;
 
                 if (height_index > 0 && row_index >= 1) {
-                    top_left_gray_scale_bit = uncompressed[bit_index - row_move_up - 1];
+                    top_left_gray_scale_bit = png->raw.data[bit_index - row_move_up - 1];
                 }
 
                 int gray_scale_bit_p = previous_gray_scale_bit + top_gray_scale_bit - top_left_gray_scale_bit;
@@ -577,80 +547,69 @@ void getFilterGrayscale(
             }
 
             int gray_scale = u16_gray_scale;
-            uncompressed[bit_index] = gray_scale;
+            png->raw.data[bit_index] = gray_scale;
 
-            pixels[pixels_position].rgb.r = gray_scale;
-            pixels[pixels_position].rgb.g = gray_scale;
-            pixels[pixels_position].rgb.b = gray_scale;
-            pixels[pixels_position].rgb.a = 255;
+            png->pixels.data[png->pixels.cursor].rgb.r = gray_scale;
+            png->pixels.data[png->pixels.cursor].rgb.g = gray_scale;
+            png->pixels.data[png->pixels.cursor].rgb.b = gray_scale;
+            png->pixels.data[png->pixels.cursor].rgb.a = 255;
 
-            pixels[pixels_position].col = height_index;
-            pixels[pixels_position].row = (row_index - 1) / 4;
-            pixels_position++;
+            png->pixels.data[png->pixels.cursor].col = height_index;
+            png->pixels.data[png->pixels.cursor].row = (row_index - 1) / 1;
+            png->pixels.cursor++;
 
             row_index += 1;
         }
         height_index += 1;
     }
-
-    *pl = pixels_position;
 }
 
-void getFilterGrayscaleA(
-    int uncompressed[], 
-    size_t uncompressed_len,
-    
-    Pixel pixels[],
-    size_t *pl,
-
-    int image_height,
-    int row_size
-) {
-    size_t pixels_position = *pl;
+void getFilterGrayscaleA(PNG *png) {
+    size_t row_size = (1 + (png->ihdr.width * 2));
 
     int current_filter_method = 0;
     int height_index = 0;
-    for (int i = 0; i < image_height; i++) {
+    for (size_t i = 0; i < png->ihdr.height; i++) {
         int row_index = 0;
         while (true) {
             int height_row_size = height_index * row_size;
-            int bit_index = height_row_size + row_index;
+            size_t bit_index = height_row_size + row_index;
 
             if (bit_index >= row_size * (height_index + 1)) break;
-            if ((size_t)bit_index >= uncompressed_len) break;
+            if ((size_t)bit_index >= png->raw.size) break;
             if (row_index == 0) {
-                current_filter_method = uncompressed[bit_index];
+                current_filter_method = png->raw.data[bit_index];
                 row_index += 1;
                 continue;
             }
 
 
             if (current_filter_method == 0) { // NO FILTER
-                int gray_scale = uncompressed[bit_index];
-                int opacity_scale = uncompressed[bit_index + 1];
-                pixels[pixels_position].rgb.r = gray_scale;
-                pixels[pixels_position].rgb.g = gray_scale;
-                pixels[pixels_position].rgb.b = gray_scale;
-                pixels[pixels_position].rgb.a = opacity_scale;
+                int gray_scale = png->raw.data[bit_index];
+                int opacity_scale = png->raw.data[bit_index + 1];
+                png->pixels.data[png->pixels.cursor].rgb.r = gray_scale;
+                png->pixels.data[png->pixels.cursor].rgb.g = gray_scale;
+                png->pixels.data[png->pixels.cursor].rgb.b = gray_scale;
+                png->pixels.data[png->pixels.cursor].rgb.a = opacity_scale;
 
-                pixels[pixels_position].col = height_index;
-                pixels[pixels_position].row = (row_index - 1) / 4;
-                pixels_position++;
+                png->pixels.data[png->pixels.cursor].col = height_index;
+                png->pixels.data[png->pixels.cursor].row = (row_index - 1) / 2;
+                png->pixels.cursor++;
 
                 row_index += 2;
                 continue;
             }
 
-            int u16_gray_scale = uncompressed[bit_index];
-            int u16_opacity_scale = uncompressed[bit_index + 1];
+            int u16_gray_scale = png->raw.data[bit_index];
+            int u16_opacity_scale = png->raw.data[bit_index + 1];
 
             if (current_filter_method == 1) {
                 int previous_gray_scale_bit = 0;
                 int previous_opacity_scale_bit = 0;
 
                 if (row_index >= 2) {
-                    previous_gray_scale_bit = uncompressed[bit_index - 2];
-                    previous_opacity_scale_bit = uncompressed[bit_index - 1];
+                    previous_gray_scale_bit = png->raw.data[bit_index - 2];
+                    previous_opacity_scale_bit = png->raw.data[bit_index - 1];
                 }
 
                 u16_gray_scale = (u16_gray_scale + previous_gray_scale_bit) % 256;
@@ -661,8 +620,8 @@ void getFilterGrayscaleA(
                 int top_opacity_scale_bit = 0;
 
                 if (height_index > 0) {
-                    top_gray_scale_bit = uncompressed[bit_index - row_move_up];
-                    top_opacity_scale_bit = uncompressed[bit_index + 1 - row_move_up];
+                    top_gray_scale_bit = png->raw.data[bit_index - row_move_up];
+                    top_opacity_scale_bit = png->raw.data[bit_index + 1 - row_move_up];
                 }
 
                 u16_gray_scale = (u16_gray_scale + top_gray_scale_bit) % 256;
@@ -672,8 +631,8 @@ void getFilterGrayscaleA(
                 int previous_opacity_scale_bit = 0;
 
                 if (row_index >= 2) {
-                    previous_gray_scale_bit = uncompressed[bit_index - 2];
-                    previous_opacity_scale_bit = uncompressed[bit_index - 1];
+                    previous_gray_scale_bit = png->raw.data[bit_index - 2];
+                    previous_opacity_scale_bit = png->raw.data[bit_index - 1];
                 }
 
                 int row_move_up = height_row_size;
@@ -681,8 +640,8 @@ void getFilterGrayscaleA(
                 int top_opacity_scale_bit = 0;
 
                 if (height_index > 0) {
-                    top_gray_scale_bit = uncompressed[bit_index - row_move_up];
-                    top_opacity_scale_bit = uncompressed[bit_index + 1 - row_move_up];
+                    top_gray_scale_bit = png->raw.data[bit_index - row_move_up];
+                    top_opacity_scale_bit = png->raw.data[bit_index + 1 - row_move_up];
                 }
 
                 u16_gray_scale = (u16_gray_scale + ((top_gray_scale_bit + previous_gray_scale_bit) / 2)) % 256;
@@ -692,8 +651,8 @@ void getFilterGrayscaleA(
                 int previous_opacity_scale_bit = 0;
 
                 if (row_index >= 2) {
-                    previous_gray_scale_bit = uncompressed[bit_index - 2];
-                    previous_opacity_scale_bit = uncompressed[bit_index - 1];
+                    previous_gray_scale_bit = png->raw.data[bit_index - 2];
+                    previous_opacity_scale_bit = png->raw.data[bit_index - 1];
                 }
 
                 int row_move_up = height_row_size;
@@ -701,16 +660,16 @@ void getFilterGrayscaleA(
                 int top_opacity_scale_bit = 0;
 
                 if (height_index > 0) {
-                    top_gray_scale_bit = uncompressed[bit_index - row_move_up];
-                    top_opacity_scale_bit = uncompressed[bit_index + 1 - row_move_up];
+                    top_gray_scale_bit = png->raw.data[bit_index - row_move_up];
+                    top_opacity_scale_bit = png->raw.data[bit_index + 1 - row_move_up];
                 }
 
                 int top_left_gray_scale_bit = 0;
                 int top_left_opacity_scale_bit = 0;
 
                 if (height_index > 0 && row_index >= 2) {
-                    top_left_gray_scale_bit = uncompressed[bit_index - row_move_up - 1];
-                    top_left_opacity_scale_bit = uncompressed[bit_index + 1 - row_move_up - 1];
+                    top_left_gray_scale_bit = png->raw.data[bit_index - row_move_up - 1];
+                    top_left_opacity_scale_bit = png->raw.data[bit_index + 1 - row_move_up - 1];
                 }
 
                 int gray_scale_bit_p = previous_gray_scale_bit + top_gray_scale_bit - top_left_gray_scale_bit;
@@ -741,87 +700,46 @@ void getFilterGrayscaleA(
             int gray_scale = u16_gray_scale;
             int opacity_scale = u16_opacity_scale;
 
-            uncompressed[bit_index] = gray_scale;
+            png->raw.data[bit_index] = gray_scale;
 
-            pixels[pixels_position].rgb.r = gray_scale;
-            pixels[pixels_position].rgb.g = gray_scale;
-            pixels[pixels_position].rgb.b = gray_scale;
-            pixels[pixels_position].rgb.a = opacity_scale;
+            png->pixels.data[png->pixels.cursor].rgb.r = gray_scale;
+            png->pixels.data[png->pixels.cursor].rgb.g = gray_scale;
+            png->pixels.data[png->pixels.cursor].rgb.b = gray_scale;
+            png->pixels.data[png->pixels.cursor].rgb.a = opacity_scale;
 
-            pixels[pixels_position].col = height_index;
-            pixels[pixels_position].row = (row_index - 1) / 4;
-            pixels_position++;
+            png->pixels.data[png->pixels.cursor].col = height_index;
+            png->pixels.data[png->pixels.cursor].row = (row_index - 1) / 2;
+            png->pixels.cursor++;
 
             row_index += 2;
         }
         height_index += 1;
     }
-
-    *pl = pixels_position;
 }
 
 
-void getFilter(
-    Pixel pixels[],
-    size_t *pixels_position,
-
-    int uncompressed[], 
-    size_t uncompressed_len,
-
-    PNG *png
-) {
-    size_t image_width = png->ihdr.width;
-    size_t image_height = png->ihdr.height;
-    
-    // The row size is 1 + width*mult (mult up to 4) and is passed as an int.
+void getFilter(PNG *png) {
+    // The row size is 1 + width * mult (mult up to 4) and is passed as an int.
     // Reject negative dimensions and widths large enough to overflow it.
-    if (/* image_width < 0 || image_height < 0 || */ image_width > (__SIZE_MAX__ - 1) / 4) {
+    if (/* image_width < 0 || png->ihdr.height < 0 || */ png->ihdr.width > (__SIZE_MAX__ - 1) / 4) {
         return;
     }
 
     switch (png->ihdr.color_type) {
         case 0: {
-            getFilterGrayscale(
-                uncompressed, 
-                uncompressed_len, 
-                pixels,
-                pixels_position,
-                image_height, 
-                (1 + (image_width * 1))
-            );
+            getFilterGrayscale(png);
             break;
         };
         case 2: {
-            getFilterRgb(
-                uncompressed, 
-                uncompressed_len, 
-                pixels, 
-                pixels_position,
-                image_height, 
-                (1 + (image_width * 3))
-            );
+            getFilterRgb(png);
             break;
         };
         case 4: {
-            getFilterGrayscaleA(
-                uncompressed, 
-                uncompressed_len, 
-                pixels, 
-                pixels_position,
-                image_height, 
-                (1 + (image_width * 2))
-            );
+            getFilterGrayscaleA(png);
             break;
         };
         case 6: {
-            getFilterRgbA(
-                uncompressed, 
-                uncompressed_len, 
-                pixels, 
-                pixels_position,
-                image_height, 
-                (1 + (image_width * 4))
-            );
+            getFilterRgbA(png);
             break;
         };
         default: {

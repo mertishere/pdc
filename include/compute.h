@@ -18,51 +18,41 @@ typedef struct {
 } Boundaries;
 
 extern void neighbourChecks(
-    Pixel *pixels,
-    size_t pixels_size,
-
-    Boundaries *boundaries,
-    PNG png
+    PNG *png,
+    Pixel *outline_pixels,
+    Boundaries *boundaries
 );
 
 extern float computeBrightness(Pixel p);
 
 extern void gaussianBlur(
-    Pixel *pixels,
-    size_t pixels_size,
     Pixel *output,
     size_t output_size,
-    int radius,
-    PNG png
+    PNG *png,
+
+    int radius
 );
 
 extern void outlineBlack(
-    Pixel *pixels,
-    size_t pixels_size,
     Pixel *output,
     size_t output_size,
-    PNG png
+    PNG *png
 );
 
 extern void fillBlack(
-    Pixel *pixels,
-    size_t pixels_size,
     Pixel *output,
     size_t output_size,
-    PNG png
+    PNG *png
 );
 
 extern void sad(
     Pixel *blurred_pixels,
     size_t blurred_pixels_size,
 
-    Pixel *original_pixels,
-    size_t original_pixels_size,
-
     Pixel *output,
     size_t output_size,
 
-    PNG png
+    PNG *png
 );
 
 

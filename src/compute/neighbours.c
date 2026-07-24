@@ -25,38 +25,34 @@ bool isInArray(
 }
 
 int _neigbourCheck(
-    Pixel *pixels,
-    size_t pixel_size,
+    PNG *png,
+    Pixel *outline_pixels,
 
     int boundarys[],
     size_t boundary_size,
     size_t boundarys_len,
-
-    int index,
-    PNG png
+    int index
 ) {
     // if(isInArray(boundarys, boundarys_len, index)) return boundarys_len;
 
     size_t len = boundarys_len;
-    int width = png.ihdr.width;
-
     int positions[8];
 
     positions[0] = index + 1;
-    positions[1] = index + width + 1;
-    positions[2] = index + width;
-    positions[3] = index + width - 1;
+    positions[1] = index + png->ihdr.width + 1;
+    positions[2] = index + png->ihdr.width;
+    positions[3] = index + png->ihdr.width - 1;
     positions[4] = index - 1;
-    positions[5] = index - width - 1;
-    positions[6] = index - width;
-    positions[7] = index - width + 1;
+    positions[5] = index - png->ihdr.width - 1;
+    positions[6] = index - png->ihdr.width;
+    positions[7] = index - png->ihdr.width + 1;
 
     int similarities = 0;
     for(int i = 0; i < 8; i++) {
         int pos = positions[i];
-        if(pos < 0 || (size_t)pos >= pixel_size) continue;
+        if(pos < 0 || (size_t)pos >= png->pixels.size) continue;
 
-        Pixel pixel = pixels[pos];
+        Pixel pixel = outline_pixels[pos];
         if(pixel.rgb.r == RGB_WHITE) continue;
 
         if(isInArray(boundarys, boundarys_len, pos)) {
@@ -69,15 +65,14 @@ int _neigbourCheck(
         len++;
 
         len = _neigbourCheck(
-            pixels,
-            pixel_size,
+            png,
+            outline_pixels,
 
             boundarys,
             boundary_size,
             len,
 
-            pos,
-            png
+            pos
         );
     }
 
@@ -86,27 +81,22 @@ int _neigbourCheck(
 
 // returns boundaries of neighbours
 void neighbourChecks(
-    Pixel *pixels,
-    size_t pixels_size,
-
-    Boundaries *boundaries,
-    PNG png
+    PNG *png,
+    Pixel *outline_pixels,
+    Boundaries *boundaries
 ) {
-    int width = png.ihdr.width;
-    int height = png.ihdr.height;
+    bool *visited = calloc(png->pixels.size, sizeof(bool));
 
-    bool *visited = calloc(pixels_size, sizeof(bool));
-
-    for (int y = 1; y < height - 1; y++) {
-        for (int x = 1; x < width - 1; x++) {
-            size_t index = y * width + x;
-            if(index >= pixels_size) {
+    for (size_t y = 1; y < png->ihdr.height - 1; y++) {
+        for (size_t x = 1; x < png->ihdr.width - 1; x++) {
+            size_t index = y * png->ihdr.width + x;
+            if(index >= png->pixels.size) {
                 free(visited);
                 return;
             }
 
             if(visited[index]) continue;
-            if(pixels[index].rgb.r == RGB_WHITE) continue;
+            if(outline_pixels[index].rgb.r == RGB_WHITE) continue;
 
             if (boundaries->len == boundaries->capacity) {
                 boundaries->capacity *= 2;
@@ -125,13 +115,13 @@ void neighbourChecks(
             boundarys_len++;
 
             boundarys_len = _neigbourCheck(
-                pixels,
-                pixels_size,
+                png,
+                outline_pixels,
+
                 boundarys,
                 boundarys_size,
                 boundarys_len,
-                p,
-                png
+                p
             );
             
             Boundary *b = &boundaries->items[boundaries->len++];

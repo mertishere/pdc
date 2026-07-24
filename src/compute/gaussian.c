@@ -40,15 +40,11 @@ void generateGaussianKernel(
 }
 
 void gaussianBlur(
-    Pixel *pixels,
-    size_t pixels_size,
-
     Pixel *output,
     size_t output_size,
+    PNG *png,
 
-    int radius,
-
-    PNG png
+    int radius
 ) {
     int kernel_size = radius * 2 + 1;
     float **kernel = malloc(kernel_size * sizeof(float *));
@@ -61,8 +57,8 @@ void gaussianBlur(
         radius / 2.0f
     );
 
-    int width = png.ihdr.width;
-    int height = png.ihdr.height;
+    int width = png->ihdr.width;
+    int height = png->ihdr.height;
 
     for (int y = 1; y < height - 1; y++) {
         for (int x = 1; x < width - 1; x++) {
@@ -77,9 +73,9 @@ void gaussianBlur(
                     py = py < 0 ? 0 : py >= height ? height - 1 : py;
 
                     size_t index = py * width + px;
-                    if(index >= pixels_size) return;
+                    if(index >= png->pixels.size) return;
 
-                    Pixel pixel = pixels[index];
+                    Pixel pixel = png->pixels.data[index];
                     float brightness = computeBrightness(pixel);
                     sum += brightness * kernel[ky + 1][kx + 1];
                 }

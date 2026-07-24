@@ -12,13 +12,13 @@
 #include "constants.h"
 #include "compute.h"
 
-void writePPM(PNG png) {
+void writePPM(PNG *png) {
     DIR *dp = opendir("out");
     if(dp == NULL) {
         int d = mkdir("out", 0755); 
         if(d < 0) {
             printf("Making out/ directory failed.");
-            exit(0);
+            exit(EXIT_FAILURE);
         }
     } else {
         closedir(dp);
@@ -45,12 +45,11 @@ void writePPM(PNG png) {
         return;
     }
 
-    size_t width = png.ihdr.width;
-    size_t height = png.ihdr.height;
+    size_t width = png->ihdr.width;
+    size_t height = png->ihdr.height;
 
-    size_t pixel_size = png.pixels.size;
-    Pixel *pixels = png.pixels.data;
-
+    size_t pixel_size = png->pixels.size;
+    Pixel *pixels = png->pixels.data;
 
     // P6 header
     fprintf(normal_file, "P6\n%ld %ld\n255\n", width, height);
@@ -66,25 +65,15 @@ void writePPM(PNG png) {
 
     Pixel *outline_pixels = malloc(pixel_size * sizeof(Pixel));
     outlineBlack(
-        pixels,
-        pixel_size,
-
         outline_pixels,
         pixel_size,
-
         png
     );
 
     Boundaries boundaries = {0};
     boundaries.capacity = 16;
     boundaries.items = malloc(boundaries.capacity * sizeof(Boundary));
-    neighbourChecks(
-        outline_pixels,
-        pixel_size,
-
-        &boundaries,
-        png
-    );
+    neighbourChecks(png, outline_pixels, &boundaries);
 
     Pixel *neighbour_pixels = malloc(pixel_size * sizeof(Pixel));
     for(size_t i = 0; i < pixel_size; i++) {
@@ -108,12 +97,10 @@ void writePPM(PNG png) {
 
     Pixel *gaussian_pixels = malloc(pixel_size * sizeof(Pixel));
     gaussianBlur(
-        pixels,
-        pixel_size,
         gaussian_pixels,
         pixel_size,
-        3,
-        png
+        png,
+        2
     );
 
     for(size_t i = 0; i < pixel_size; i++) {
@@ -136,8 +123,8 @@ void writePPM(PNG png) {
             Pixel op = pixels[p];
             float f = computeBrightness(op);
             
-            points[j].x = p % png.ihdr.width;
-            points[j].y = p / png.ihdr.height;
+            points[j].x = p % png->ihdr.width;
+            points[j].y = p / png->ihdr.height;
             points[j].z = (f - gp.rgb.r) * 100.0f / 255.0f;
             points[j].valid = false;
         }

@@ -59,46 +59,41 @@ void setBlock(int symbol, Symbol *block) {
 
 void handleLzssStatic(
     int symbol,
-
-    char binary[],
-    size_t binary_len,
-    size_t *bp,
-
-    int uncompressed[],
-    size_t *up
+    PNG *png
 ) {
-    size_t binary_position = *bp;
-    size_t uncompressed_position = *up;
-
     Symbol block_symbol;
     setBlock(symbol, &block_symbol);
 
-
     int block_extra_bits = 0;
     if(block_symbol.extra > 0) {
-        if (binary_position + block_symbol.extra > binary_len) { 
-            *bp = binary_len; 
-            *up = uncompressed_position; 
+        if (png->binary.cursor + block_symbol.extra > png->binary.size) { 
+            png->binary.cursor = png->binary.size; 
+            png->raw.cursor = png->raw.size; 
             return; 
         }
 
         char block_extra_bits_slice[block_symbol.extra];
-        writeBuffer(binary, block_extra_bits_slice, binary_position, binary_position + block_symbol.extra);
+        writeBuffer(
+            png->binary.data,
+            block_extra_bits_slice,
+            png->binary.cursor,
+            png->binary.cursor + block_symbol.extra
+        );
         block_extra_bits = binaryToInt(block_extra_bits_slice, block_symbol.extra, true);
-        binary_position += block_symbol.extra;
+        png->binary.cursor += block_symbol.extra;
     }
 
 
     int total_copies = block_symbol.base + block_extra_bits;
-    if (binary_position + 5 > binary_len) { 
-        *bp = binary_len;
-        *up = uncompressed_position;
+    if (png->binary.cursor + 5 > png->binary.size) { 
+        png->binary.cursor = png->binary.size;
+        png->raw.cursor = png->raw.size;
         return; 
     }
 
     char distance_symbol_slice[5];
-    writeBuffer(binary, distance_symbol_slice, binary_position, binary_position + 5);
-    binary_position += 5;
+    writeBuffer(png->binary.data, distance_symbol_slice, png->binary.cursor, png->binary.cursor + 5);
+    png->binary.cursor += 5;
     int distance_symbol = binaryToInt(distance_symbol_slice, 5, false);
     
     Symbol dist_symbol = {};
@@ -106,23 +101,27 @@ void handleLzssStatic(
 
     int distance_extra_bits = 0;
     if(dist_symbol.extra > 0) {
-        if (binary_position + dist_symbol.extra > binary_len) { 
-            *bp = binary_len;
-            *up = uncompressed_position;
+        if (png->binary.cursor + dist_symbol.extra > png->binary.size) { 
+            png->binary.cursor = png->binary.size;
+            png->raw.cursor = png->raw.size;
             return; 
         }
         char distance_symbol_extra_slice[dist_symbol.extra];
-        writeBuffer(binary, distance_symbol_extra_slice, binary_position, binary_position + dist_symbol.extra);
-        binary_position += dist_symbol.extra;
+        writeBuffer(
+            png->binary.data,
+            distance_symbol_extra_slice,
+            png->binary.cursor,
+            png->binary.cursor + dist_symbol.extra
+        );
+        png->binary.cursor += dist_symbol.extra;
         distance_extra_bits = binaryToInt(distance_symbol_extra_slice, dist_symbol.extra, true);
     }
 
-
     size_t total_distance = dist_symbol.base + distance_extra_bits;
-    if (uncompressed_position < total_distance) {
+    if (png->raw.cursor < total_distance) {
         printf(
             "1. WARNING TOTAL DISTANCE FAR EXCEEDS CURRENT LENGTH! CL: %ld | TD: %ld\n",
-            uncompressed_position,
+            png->raw.cursor,
             total_distance
         );
         exit(EXIT_FAILURE);
@@ -130,51 +129,37 @@ void handleLzssStatic(
     }
 
     for (
-        size_t i = uncompressed_position - total_distance;
-        i < uncompressed_position - total_distance + total_copies;
+        size_t i = png->raw.cursor - total_distance;
+        i < png->raw.cursor - total_distance + total_copies;
         i++
     ) {
-        uncompressed[uncompressed_position] = uncompressed[i];
-        uncompressed_position++;
-        uncompressed[uncompressed_position] = '\0';
+        png->raw.data[png->raw.cursor] = png->raw.data[i];
+        png->raw.cursor++;
+        png->raw.data[png->raw.cursor] = '\0';
     }
-
-    *bp = binary_position;
-    *up = uncompressed_position;
 }
 
 void handleLzssDynamic(
     int symbol,
-
-    char binary[],
-    size_t binary_len,
-    size_t *bp,
-    
-    int uncompressed[],
-    size_t uncompressed_len,
-    size_t *up,
-    
     CodeLengthSymbols hdist_huffman_codes[],
-    size_t hdist_huffman_codes_size
+    size_t hdist_huffman_codes_size,
+    PNG *png
 ) {
-    size_t binary_position = *bp;
-    size_t uncompressed_position = *up;
-    
     Symbol block_symbol;
     setBlock(symbol, &block_symbol);
 
     int block_extra_bits = 0;
     if(block_symbol.extra > 0) {
         char block_extra_bits_slice[block_symbol.extra];
-        if(binary_position + block_symbol.extra > binary_len) {
-            *bp = binary_len;
-            *up = uncompressed_position;
+        if(png->binary.cursor + block_symbol.extra > png->binary.size) {
+            png->binary.cursor = png->binary.size;
+            png->raw.cursor = png->raw.size;
             return;
         }
 
-        writeBuffer(binary, block_extra_bits_slice, binary_position, binary_position + block_symbol.extra);
+        writeBuffer(png->binary.data, block_extra_bits_slice, png->binary.cursor, png->binary.cursor + block_symbol.extra);
         block_extra_bits = binaryToInt(block_extra_bits_slice, block_symbol.extra, true);
-        binary_position += block_symbol.extra;
+        png->binary.cursor += block_symbol.extra;
     }
     int total_copies = block_symbol.base + block_extra_bits;
 
@@ -182,14 +167,14 @@ void handleLzssDynamic(
     int distance_symbol_storer_size = 0;
     int distance_symbol = -1;
 
-    while (binary_position < binary_len) {
-        distance_symbol_storer[distance_symbol_storer_size] = binary[binary_position] - INT_TO_ASCII_OFFSET;
+    while (png->binary.cursor < png->binary.size) {
+        distance_symbol_storer[distance_symbol_storer_size] = png->binary.data[png->binary.cursor] - INT_TO_ASCII_OFFSET;
         distance_symbol_storer_size++;
         if(distance_symbol_storer_size < 4) {
             distance_symbol_storer[distance_symbol_storer_size] = '\0';
         }
 
-        binary_position += 1;
+        png->binary.cursor += 1;
         for (size_t i = 0; i < hdist_huffman_codes_size; i++) {
             CodeLengthSymbols hdist_huffman_code = hdist_huffman_codes[i];
             if (cmpInts(
@@ -212,50 +197,45 @@ void handleLzssDynamic(
 
     setDist(distance_symbol, &dist_symbol);
 
-    if (binary_position + dist_symbol.extra > binary_len) { 
-        *bp = binary_len;
-        *up = uncompressed_position;
+    if (png->binary.cursor + dist_symbol.extra > png->binary.size) { 
+        png->binary.cursor = png->binary.size;
+        png->raw.cursor = png->raw.size;
         return; 
     }
 
     char distance_extra_bits_slice[dist_symbol.extra == 0 ? 1 : dist_symbol.extra];
     writeBuffer(
-        binary,
+        png->binary.data,
         distance_extra_bits_slice,
-        binary_position,
-        binary_position + dist_symbol.extra
+        png->binary.cursor,
+        png->binary.cursor + dist_symbol.extra
     );
 
     int distance_extra_bits = binaryToInt(distance_extra_bits_slice, dist_symbol.extra, true);
-    binary_position += dist_symbol.extra;
+    png->binary.cursor += dist_symbol.extra;
     
     size_t total_distance = dist_symbol.base + distance_extra_bits;
-    if (uncompressed_position < total_distance) {
+    if (png->raw.cursor < total_distance) {
         printf(
             "2. WARNING TOTAL DISTANCE FAR EXCEEDS CURRENT LENGTH! CL: %ld | TD: %ld\n",
-            uncompressed_position,
+            png->raw.cursor,
             total_distance
         );
         exit(EXIT_FAILURE);
         return;
     }
 
-    size_t start = uncompressed_position - total_distance;
+    size_t start = png->raw.cursor - total_distance;
     size_t end = start + total_copies;
 
     for (size_t i = start; i < end; i++) {
-        if(uncompressed_position >= uncompressed_len) {
-            printf("too much\n");
+        if(png->raw.cursor >= png->raw.size) {
+            printf("Too much.\n");
             break;
         }
 
-        int copy = uncompressed[i];
-        uncompressed[uncompressed_position] = copy;
-        uncompressed_position++;
+        int copy = png->raw.data[i];
+        png->raw.data[png->raw.cursor] = copy;
+        png->raw.cursor++;
     }
-
-    // uncompressed[uncompressed_position] = '\0';
-
-    *up = uncompressed_position;
-    *bp = binary_position;
 }

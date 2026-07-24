@@ -21,10 +21,9 @@ int main(int argc, char *argv[]) {
 
     char *path = argv[1];
     PNG png = parsePng(path);
-    // handleAncillaries(png, png.ancillaries_amount);
 
-    writePPM(png);
-    freePng(png);
+    writePPM(&png);
+    freePng(&png);
 
     return 0;
 }
